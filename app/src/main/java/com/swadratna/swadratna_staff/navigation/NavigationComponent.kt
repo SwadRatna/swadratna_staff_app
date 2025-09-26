@@ -1,6 +1,9 @@
 package com.swadratna.swadratna_staff.navigation
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.List
@@ -12,6 +15,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
@@ -28,11 +32,13 @@ import com.swadratna.swadratna_staff.ui.screens.tables.TablesScreen
 import com.swadratna.swadratna_staff.R
 
 
+import com.swadratna.swadratna_staff.ui.screens.login.LoginScreen
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NavigationComponent(
     navController: NavHostController = rememberNavController(),
-    startDestination: String = NavigationRoute.Tables.route
+    startDestination: String
 ) {
     val items = listOf(
         NavigationRoute.Orders,
@@ -47,42 +53,72 @@ fun NavigationComponent(
     // Find the NavigationRoute object based on the current destination
     val currentRoute = currentDestination?.route
     val currentScreen = items.find { it.route == currentRoute }
+    val shouldShowBottomBar = items.any { it.route == currentRoute }
+
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(text = currentScreen?.title ?: stringResource(R.string.app_name))
-                }
-            )
+            if (shouldShowBottomBar) {
+                TopAppBar(
+                    title = {
+                        Text(text = currentScreen?.title ?: stringResource(R.string.app_name))
+                    }, actions = {
+                        IconButton(
+                            onClick = { /* Handle profile click */ },
+                            modifier = Modifier
+                                .background(MaterialTheme.colorScheme.background, CircleShape)
+                        ) {
+                            Icon(
+                                Icons.Default.Person,
+                                contentDescription = "Profile",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }, colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        titleContentColor = MaterialTheme.colorScheme.surface
+                    )
+                )
+            }
         },
         bottomBar = {
-            NavigationBar {
-                val navBackStackEntry by navController.currentBackStackEntryAsState()
-                val currentDestination = navBackStackEntry?.destination
-                items.forEach { screen ->
-                    NavigationBarItem(
-                        icon = { Icon(screen.icon, contentDescription = null) },
-                        label = { Text(screen.title) },
-                        selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true,
-                        onClick = {
-                            navController.navigate(screen.route) {
-                                popUpTo(navController.graph.findStartDestination().id) {
-                                    saveState = true
+            if (shouldShowBottomBar) {
+                NavigationBar {
+                    val navBackStackEntry by navController.currentBackStackEntryAsState()
+                    val currentDestination = navBackStackEntry?.destination
+                    items.forEach { screen ->
+                        NavigationBarItem(
+                            icon = { Icon(screen.icon, contentDescription = null) },
+                            label = { Text(screen.title) },
+                            selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true,
+                            onClick = {
+                                navController.navigate(screen.route) {
+                                    popUpTo(navController.graph.findStartDestination().id) {
+                                        saveState = true
+                                    }
+                                    launchSingleTop = true
+                                    restoreState = true
                                 }
-                                launchSingleTop = true
-                                restoreState = true
-                            }
-                        }
-                    )
+                            })
+                    }
                 }
             }
-        }
+        },
+        containerColor = MaterialTheme.colorScheme.background,
     ) { innerPadding ->
         NavHost(
             modifier = Modifier.padding(innerPadding),
             navController = navController,
             startDestination = startDestination
         ) {
+            composable(route = NavigationRoute.Login.route) {
+                LoginScreen(onLoginSuccess = {
+                    navController.navigate(NavigationRoute.Tables.route) {
+                        popUpTo(navController.graph.id) {
+                            inclusive = true
+                        }
+                    }
+                })
+            }
             composable(route = NavigationRoute.Orders.route) {
                 OrdersScreen()
             }
@@ -99,22 +135,20 @@ fun NavigationComponent(
                 route = "${NavigationRoute.OrderTaking.route}/{tableNumber}/{customerName}",
                 arguments = listOf(
                     navArgument("tableNumber") { type = NavType.IntType },
-                    navArgument("customerName") { type = NavType.StringType }
-                )
-            ) { backStackEntry ->
+                    navArgument("customerName") { type = NavType.StringType })) { backStackEntry ->
                 val tableNumber = backStackEntry.arguments?.getInt("tableNumber") ?: 0
                 val customerName = backStackEntry.arguments?.getString("customerName") ?: ""
                 OrderTakingScreen(
                     tableNumber = tableNumber,
                     customerName = customerName,
-                    onBack = { navController.popBackStack() }
-                )
+                    onBack = { navController.popBackStack() })
             }
         }
     }
 }
 
 sealed class NavigationRoute(val route: String, val title: String, val icon: ImageVector) {
+    object Login : NavigationRoute("login", "Login", Icons.Default.Person)
     object Orders : NavigationRoute("orders", "Orders", Icons.Default.List)
     object Tables : NavigationRoute("tables", "Tables", Icons.Default.Home)
     object Inventory : NavigationRoute("inventory", "Inventory", Icons.Default.ShoppingCart)

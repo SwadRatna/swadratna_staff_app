@@ -64,6 +64,7 @@ dependencies {
     implementation(libs.hilt.android)
     kapt(libs.hilt.compiler)
     implementation(libs.hilt.navigation.compose)
+    compileOnly("javax.inject:javax.inject:1")
     
     // Navigation
     implementation(libs.navigation.compose)
@@ -72,6 +73,13 @@ dependencies {
     implementation(libs.retrofit.core)
     implementation(libs.retrofit.converter.gson)
     implementation(libs.okhttp.logging)
+
+    // Kotlin Coroutines for asynchronous operations
+    implementation(libs.kotlinx.coroutines.android)
+
+    // EncryptedSharedPreferences (from the security-crypto library) for secure token storage
+    implementation(libs.androidx.security.crypto)
+
     
     // Room
     implementation(libs.room.runtime)

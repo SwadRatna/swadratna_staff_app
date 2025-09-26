@@ -20,8 +20,7 @@ import androidx.navigation.NavController
 import com.swadratna.swadratna_staff.navigation.NavigationRoute
 
 data class Table(
-    val tableNumber: Int,
-    var personName: String? = null
+    val tableNumber: Int, var personName: String? = null
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -52,29 +51,30 @@ fun TablesScreen(navController: NavController) {
                     tables[index] = tables[index].copy(personName = fullName)
                 }
                 showDialog = false
-            }
-        )
+            })
     }
+    Box(modifier = Modifier
+        .fillMaxSize()
+        .padding(horizontal = 16.dp, vertical = 8.dp)) {
 
-    LazyVerticalGrid(
-        columns = GridCells.Fixed(2),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-        horizontalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        items(tables) { table ->
-            TableCard(
-                table = table,
-                onClick = {
-                    if (table.personName == null) {
-                        selectedTable = table
-                        showDialog = true
-                    } else {
-                        navController.navigate(
-                            "${NavigationRoute.OrderTaking.route}/${table.tableNumber}/${table.personName}"
-                        )
-                    }
-                }
-            )
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(2),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            items(tables) { table ->
+                TableCard(
+                    table = table, onClick = {
+                        if (table.personName == null) {
+                            selectedTable = table
+                            showDialog = true
+                        } else {
+                            navController.navigate(
+                                "${NavigationRoute.OrderTaking.route}/${table.tableNumber}/${table.personName}"
+                            )
+                        }
+                    })
+            }
         }
     }
 }

@@ -39,7 +39,8 @@ fun OrdersScreen() {
         Order("#1005", "Harry Eagle", listOf("Tuna Pizza", "Fanta Orange", "Water"), "Completed")
     )
 
-    Column(modifier = Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top))) {
+
+    Column(modifier = Modifier) {
         SearchBar()
         FilterButtons()
         LazyColumn(
@@ -71,14 +72,6 @@ fun SearchBar() {
             shape = RoundedCornerShape(8.dp)
         )
         Spacer(modifier = Modifier.width(16.dp))
-        IconButton(
-            onClick = { /* Handle profile click */ },
-            modifier = Modifier
-                .size(48.dp)
-                .background(MaterialTheme.colorScheme.primary, CircleShape)
-        ) {
-            Icon(Icons.Default.Person, contentDescription = "Profile", tint = MaterialTheme.colorScheme.onPrimary)
-        }
     }
 }
 

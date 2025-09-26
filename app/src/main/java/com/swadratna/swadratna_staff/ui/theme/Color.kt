@@ -2,10 +2,13 @@ package com.swadratna.swadratna_staff.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-val Purple80 = Color(0xFF64B5F6)
-val PurpleGrey80 = Color(0xFF1976D2)
-val Pink80 = Color(0xFFEFB8C8)
 
-val Purple40 = Color(0xFF2196F3)
-val PurpleGrey40 = Color(0xFF6B89A4)
-val Pink40 = Color(0xFF7D5260)
+val Red80 = Color(0xFFFF5D3A) // A light red/pink shade for dark themes
+val RedGrey80 = Color(0xFFFF7878) // A slightly darker red
+val RedGrey20 = Color(0xFFFAD2C9)
+val RedGrey10 = Color(0xFFFFE6E0)
+val Orange80 = Color(0xFFFFAD34) // A vibrant orange
+
+val Red40 = Color(0xFFD3482F) // A darker red for light themes
+val RedGrey40 = Color(0xFFC65528) // A deeper red
+val Orange40 = Color(0xFF754800) // A standard orange

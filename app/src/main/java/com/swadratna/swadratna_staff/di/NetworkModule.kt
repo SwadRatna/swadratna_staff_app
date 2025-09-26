@@ -2,6 +2,8 @@ package com.swadratna.swadratna_staff.di
 
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
+import com.swadratna.swadratna_staff.data.remote.repositories.authentication.TokenAuthenticator
+import com.swadratna.swadratna_staff.data.remote.services.ApiService
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -11,6 +13,7 @@ import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import java.util.concurrent.TimeUnit
+import javax.inject.Named
 import javax.inject.Singleton
 
 @Module
@@ -25,13 +28,10 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideOkHttpClient(): OkHttpClient {
-        val loggingInterceptor = HttpLoggingInterceptor().apply {
-            level = HttpLoggingInterceptor.Level.BODY
-        }
-
+    @Named("unauthenticated")
+    fun provideUnauthenticatedOkHttpClient(): OkHttpClient {
         return OkHttpClient.Builder()
-            .addInterceptor(loggingInterceptor)
+            .addInterceptor(HttpLoggingInterceptor().apply { level = HttpLoggingInterceptor.Level.BODY })
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
             .writeTimeout(30, TimeUnit.SECONDS)
@@ -40,11 +40,50 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideRetrofit(okHttpClient: OkHttpClient, gson: Gson): Retrofit {
+    @Named("authenticated")
+    fun provideOkHttpClient(authenticator: TokenAuthenticator): OkHttpClient {
+        return OkHttpClient.Builder()
+            .addInterceptor(HttpLoggingInterceptor().apply { level = HttpLoggingInterceptor.Level.BODY })
+            .authenticator(authenticator)
+            .connectTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(30, TimeUnit.SECONDS)
+            .writeTimeout(30, TimeUnit.SECONDS)
+            .build()
+    }
+
+    @Provides
+    @Singleton
+    @Named("unauthenticated")
+    fun provideUnauthenticatedRetrofit(@Named("unauthenticated") unauthenticatedOkHttpClient: OkHttpClient, gson: Gson): Retrofit {
         return Retrofit.Builder()
-            .baseUrl("https://api.swadratna.com/") // Replace with your actual base URL
+            .baseUrl("https://api.swadratna.com/")
+            .client(unauthenticatedOkHttpClient)
+            .addConverterFactory(GsonConverterFactory.create(gson))
+            .build()
+    }
+
+    @Provides
+    @Singleton
+    @Named("authenticated")
+    fun provideRetrofit(@Named("authenticated") okHttpClient: OkHttpClient, gson: Gson): Retrofit {
+        return Retrofit.Builder()
+            .baseUrl("https://api.swadratna.com/")
             .client(okHttpClient)
             .addConverterFactory(GsonConverterFactory.create(gson))
             .build()
+    }
+
+    @Provides
+    @Singleton
+    @Named("authenticated")
+    fun provideAuthenticatedApiService(@Named("authenticated") retrofit: Retrofit): ApiService {
+        return retrofit.create(ApiService::class.java)
+    }
+
+    @Provides
+    @Singleton
+    @Named("unauthenticated")
+    fun provideUnauthenticatedApiService(@Named("unauthenticated") unauthenticatedRetrofit: Retrofit): ApiService {
+        return unauthenticatedRetrofit.create(ApiService::class.java)
     }
 }
