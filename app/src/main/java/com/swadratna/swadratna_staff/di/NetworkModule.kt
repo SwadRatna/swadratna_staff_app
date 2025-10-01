@@ -20,6 +20,10 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object NetworkModule {
 
+    const val BASE_URL = "https://swad-ratna-akk6v.ondigitalocean.app"
+    const val X_KEY_HEADER = "X-Key"
+    const val X_KEY_VALUE = "ikekk23nnjk3km33"
+
     @Provides
     @Singleton
     fun provideGson(): Gson {
@@ -31,6 +35,13 @@ object NetworkModule {
     @Named("unauthenticated")
     fun provideUnauthenticatedOkHttpClient(): OkHttpClient {
         return OkHttpClient.Builder()
+            .addInterceptor { chain ->
+                val originalRequest = chain.request()
+                val newRequest = originalRequest.newBuilder()
+                    .header(X_KEY_HEADER, X_KEY_VALUE)
+                    .build()
+                chain.proceed(newRequest)
+            }
             .addInterceptor(HttpLoggingInterceptor().apply { level = HttpLoggingInterceptor.Level.BODY })
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
@@ -43,6 +54,13 @@ object NetworkModule {
     @Named("authenticated")
     fun provideOkHttpClient(authenticator: TokenAuthenticator): OkHttpClient {
         return OkHttpClient.Builder()
+            .addInterceptor { chain ->
+                val originalRequest = chain.request()
+                val newRequest = originalRequest.newBuilder()
+                    .header(X_KEY_HEADER, X_KEY_VALUE)
+                    .build()
+                chain.proceed(newRequest)
+            }
             .addInterceptor(HttpLoggingInterceptor().apply { level = HttpLoggingInterceptor.Level.BODY })
             .authenticator(authenticator)
             .connectTimeout(30, TimeUnit.SECONDS)
@@ -56,7 +74,7 @@ object NetworkModule {
     @Named("unauthenticated")
     fun provideUnauthenticatedRetrofit(@Named("unauthenticated") unauthenticatedOkHttpClient: OkHttpClient, gson: Gson): Retrofit {
         return Retrofit.Builder()
-            .baseUrl("https://api.swadratna.com/")
+            .baseUrl(BASE_URL)
             .client(unauthenticatedOkHttpClient)
             .addConverterFactory(GsonConverterFactory.create(gson))
             .build()
@@ -67,7 +85,7 @@ object NetworkModule {
     @Named("authenticated")
     fun provideRetrofit(@Named("authenticated") okHttpClient: OkHttpClient, gson: Gson): Retrofit {
         return Retrofit.Builder()
-            .baseUrl("https://api.swadratna.com/")
+            .baseUrl(BASE_URL)
             .client(okHttpClient)
             .addConverterFactory(GsonConverterFactory.create(gson))
             .build()

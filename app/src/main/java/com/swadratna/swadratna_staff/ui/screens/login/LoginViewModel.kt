@@ -9,10 +9,13 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import com.swadratna.swadratna_staff.data.local.dao.StaffUserDao
+import com.swadratna.swadratna_staff.data.local.entities.StaffUser
 
 @HiltViewModel
 class LoginViewModel @Inject constructor(
-    private val authRepository: AuthRepository
+    private val authRepository: AuthRepository,
+    private val staffUserDao: StaffUserDao
 ) : ViewModel() {
 
     private val _username = MutableStateFlow("")
@@ -45,6 +48,20 @@ class LoginViewModel @Inject constructor(
             val request = LoginRequest(username.value, password.value)
             authRepository.login(request)
                 .onSuccess { response ->
+                    // Assuming 'response' contains a 'staffUser' property of type StaffUser
+                    // You might need to adjust this based on the actual response structure
+                    val staffUser = response // This line is an assumption
+
+                    val staff = StaffUser(
+                        staffUser.staff.id,
+                        staffUser.staff.name,
+                        staffUser.staff.email,
+                        staffUser.staff.role,
+                        staffUser.location,
+                        staffUser.staff.phone,
+                        staffUser.user.permissions)
+                    staffUserDao.insertStaffUser(staff) // Save staff user to RoomDB
+
                     _loginSuccess.value = true
                     _isLoading.value = false
                 }

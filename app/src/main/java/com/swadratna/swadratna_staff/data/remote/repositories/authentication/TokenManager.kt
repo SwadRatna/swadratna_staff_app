@@ -1,8 +1,11 @@
 package com.swadratna.swadratna_staff.data.remote.repositories.authentication
 
 import android.content.Context
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
+import com.swadratna.swadratna_staff.data.remote.JwtUtils
 import com.swadratna.swadratna_staff.data.remote.model.TokenRefreshRequest
 import com.swadratna.swadratna_staff.data.remote.model.TokenRefreshResponse
 import com.swadratna.swadratna_staff.data.remote.services.ApiService
@@ -52,23 +55,21 @@ class TokenManager @Inject constructor(
     /**
      * Saves the access and refresh tokens along with their expiry times to secure storage.
      * @param accessToken The new access token.
-     * @param refreshToken The new refresh token.
-     * @param expiresIn The lifespan of the access token in seconds.
-     * @param refreshExpiresIn The lifespan of the refresh token in seconds.
      */
+    @RequiresApi(Build.VERSION_CODES.O)
     fun saveTokens(
-        accessToken: String, refreshToken: String, expiresIn: Long, refreshExpiresIn: Long
+        accessToken: String
     ) {
+        val expiry = JwtUtils.getExpiryTimeFromToken(accessToken)
         val currentMillis = System.currentTimeMillis()
-        sharedPrefs.edit().apply {
-            putString(ACCESS_TOKEN_KEY, accessToken)
-            putString(REFRESH_TOKEN_KEY, refreshToken)
-            putLong(ACCESS_TOKEN_EXPIRY_KEY, currentMillis + (expiresIn * 1000L))
-            putLong(REFRESH_TOKEN_EXPIRY_KEY, currentMillis + (refreshExpiresIn * 1000L))
-            apply()
+        expiry?.let { expiry ->
+            sharedPrefs.edit().apply {
+                putString(ACCESS_TOKEN_KEY, accessToken)
+                putLong(ACCESS_TOKEN_EXPIRY_KEY, currentMillis + (expiry * 1000L))
+                apply()
+            }
+            _accessTokenFlow.value = accessToken
         }
-        _accessTokenFlow.value = accessToken
-        _refreshTokenFlow.value = refreshToken
     }
 
     /**
@@ -77,9 +78,7 @@ class TokenManager @Inject constructor(
     fun clearTokens() {
         sharedPrefs.edit().apply {
             remove(ACCESS_TOKEN_KEY)
-            remove(REFRESH_TOKEN_KEY)
             remove(ACCESS_TOKEN_EXPIRY_KEY)
-            remove(REFRESH_TOKEN_EXPIRY_KEY)
             apply()
         }
         _accessTokenFlow.value = null
@@ -130,18 +129,14 @@ class TokenManager @Inject constructor(
      * Refreshes the access token using the stored refresh token.
      * @return TokenRefreshResponse if successful, null otherwise.
      */
+    @RequiresApi(Build.VERSION_CODES.O)
     suspend fun refreshAccessToken(): TokenRefreshResponse? {
         val currentRefreshToken = getRefreshToken() ?: return null
         return try {
             val response = authService.get().refreshToken(TokenRefreshRequest(currentRefreshToken))
             if (response.isSuccessful && response.body() != null) {
                 val newTokens = response.body()!!
-                saveTokens(
-                    newTokens.accessToken,
-                    newTokens.refreshToken,
-                    newTokens.expiresIn,
-                    newTokens.refreshExpiresIn
-                )
+                saveTokens(newTokens.accessToken,)
                 newTokens
             } else {
                 clearTokens()
