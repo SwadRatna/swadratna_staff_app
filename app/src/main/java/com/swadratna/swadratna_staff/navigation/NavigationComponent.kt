@@ -132,15 +132,15 @@ fun NavigationComponent(
                 // Add Profile screen when ready
             }
             composable(
-                route = "${NavigationRoute.OrderTaking.route}/{tableNumber}/{customerName}",
+                route = "${NavigationRoute.OrderTaking.route}/{tableNumber}/{orderId}",
                 arguments = listOf(
                     navArgument("tableNumber") { type = NavType.IntType },
-                    navArgument("customerName") { type = NavType.StringType })) { backStackEntry ->
+                    navArgument("orderId") { type = NavType.StringType })) { backStackEntry ->
                 val tableNumber = backStackEntry.arguments?.getInt("tableNumber") ?: 0
-                val customerName = backStackEntry.arguments?.getString("customerName") ?: ""
+                val orderId = backStackEntry.arguments?.getString("orderId") ?: ""
                 OrderTakingScreen(
                     tableNumber = tableNumber,
-                    customerName = customerName,
+                    orderId = orderId,
                     onBack = { navController.popBackStack() })
             }
         }

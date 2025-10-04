@@ -35,7 +35,7 @@ import com.swadratna.swadratna_staff.data.remote.services.KotRequest
 @Composable
 fun OrderTakingScreen(
     tableNumber: Int,
-    customerName: String,
+    orderId: String,
     onBack: () -> Unit,
     viewModel: OrderManagementViewModel = hiltViewModel()
 ) {
@@ -84,7 +84,7 @@ fun OrderTakingScreen(
                             fontWeight = FontWeight.Bold
                         )
                         Text(
-                            customerName,
+                            "Order ID: $orderId",
                             fontSize = 14.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -423,17 +423,5 @@ fun MenuItemOrderCard(
                 }
             }
         }
-    }
-}
-
-@Preview(showBackground = true, widthDp = 411, heightDp = 823)
-@Composable
-fun OrderTakingScreenPreview() {
-    MaterialTheme {
-        OrderTakingScreen(
-            tableNumber = 4,
-            customerName = "Vivek Kumar",
-            onBack = {}
-        )
     }
 }

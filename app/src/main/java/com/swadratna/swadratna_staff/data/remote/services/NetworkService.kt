@@ -3,7 +3,6 @@ package com.swadratna.swadratna_staff.data.remote.services
 import com.swadratna.swadratna_staff.data.remote.model.Customer
 import com.swadratna.swadratna_staff.data.remote.model.CustomerBill
 import com.swadratna.swadratna_staff.data.remote.model.MenuItem
-import com.swadratna.swadratna_staff.data.remote.model.Table
 import com.swadratna.swadratna_staff.data.remote.model.TokenRefreshRequest
 import com.swadratna.swadratna_staff.data.remote.model.TokenRefreshResponse
 import retrofit2.Response

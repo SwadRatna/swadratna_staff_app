@@ -11,21 +11,74 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.swadratna.swadratna_staff.ui.screens.orders.OrderManagementViewModel
+import com.swadratna.swadratna_staff.ui.screens.orders.CustomerState
+import com.swadratna.swadratna_staff.ui.screens.orders.OccupyTableState
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AssignTableDialog(
     tableNumber: Int,
     onDismiss: () -> Unit,
-    onSubmit: (String, String) -> Unit
+    onTableOccupied: (String) -> Unit, // New callback
+    orderManagementViewModel: OrderManagementViewModel = hiltViewModel()
 ) {
     var fullName by remember { mutableStateOf("") }
     var contactInfo by remember { mutableStateOf("") }
+
+    val customerState by orderManagementViewModel.customerState.collectAsState()
+    val occupyTableState by orderManagementViewModel.occupyTableState.collectAsState()
+
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(customerState) {
+        when (customerState) {
+            is CustomerState.Success -> {
+                val customer = (customerState as CustomerState.Success).customer
+                orderManagementViewModel.occupyTable(tableNumber, customer.id)
+                orderManagementViewModel.resetCustomerState()
+            }
+            is CustomerState.Error -> {
+                snackbarHostState.showSnackbar(
+                    message = (customerState as CustomerState.Error).message ?: "Unknow Error",
+                    actionLabel = "Dismiss"
+                )
+                orderManagementViewModel.resetCustomerState()
+            }
+            else -> {}
+        }
+    }
+
+    LaunchedEffect(occupyTableState) {
+        when (occupyTableState) {
+            is OccupyTableState.Success -> {
+                val orderId = (occupyTableState as OccupyTableState.Success).response.order.id
+                snackbarHostState.showSnackbar(
+                    message = "Table ${tableNumber} assigned successfully. Order ID: $orderId",
+                    actionLabel = "Dismiss"
+                )
+                orderManagementViewModel.resetOccupyTableState()
+                onDismiss()
+                onTableOccupied(orderId.toString()) // Call the new callback
+            }
+            is OccupyTableState.Error -> {
+                snackbarHostState.showSnackbar(
+                    message = (occupyTableState as OccupyTableState.Error).message,
+                    actionLabel = "Dismiss"
+                )
+                orderManagementViewModel.resetOccupyTableState()
+            }
+            else -> {}
+        }
+    }
 
     Dialog(onDismissRequest = onDismiss) {
         Card(
             shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         ) {
+            SnackbarHost(hostState = snackbarHostState)
             Column(
                 modifier = Modifier
                     .padding(24.dp),
@@ -61,16 +114,21 @@ fun AssignTableDialog(
                 Button(
                     onClick = {
                         if (fullName.isNotBlank() && contactInfo.isNotBlank()) {
-                            onSubmit(fullName, contactInfo)
+                            orderManagementViewModel.getOrCreateCustomer(contactInfo, fullName)
                         }
                     },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(50.dp),
                     shape = RoundedCornerShape(8.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                    enabled = customerState !is CustomerState.Loading && occupyTableState !is OccupyTableState.Loading
                 ) {
-                    Text("Submit User", color = MaterialTheme.colorScheme.onPrimary, fontSize = 18.sp)
+                    if (customerState is CustomerState.Loading || occupyTableState is OccupyTableState.Loading) {
+                        CircularProgressIndicator(color = MaterialTheme.colorScheme.onPrimary)
+                    } else {
+                        Text("Assign Table", color = MaterialTheme.colorScheme.onPrimary, fontSize = 18.sp)
+                    }
                 }
             }
         }

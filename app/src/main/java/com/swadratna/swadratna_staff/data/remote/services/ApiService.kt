@@ -1,10 +1,12 @@
 package com.swadratna.swadratna_staff.data.remote.services
 
-import com.swadratna.swadratna_staff.data.remote.model.Customer
 import com.swadratna.swadratna_staff.data.remote.model.CustomerBill
+import com.swadratna.swadratna_staff.data.remote.model.CustomerResponse
 import com.swadratna.swadratna_staff.data.remote.model.MenuItem
+import com.swadratna.swadratna_staff.data.remote.model.OccupyTableRequest
+import com.swadratna.swadratna_staff.data.remote.model.OccupyTableResponse
 import com.swadratna.swadratna_staff.data.remote.model.Staff_User
-import com.swadratna.swadratna_staff.data.remote.model.Table
+import com.swadratna.swadratna_staff.data.remote.model.TableListResponse
 import com.swadratna.swadratna_staff.data.remote.model.TokenRefreshRequest
 import com.swadratna.swadratna_staff.data.remote.model.TokenRefreshResponse
 import retrofit2.Response
@@ -23,31 +25,32 @@ interface ApiService {
     @POST("auth/refresh-token")
     suspend fun refreshToken(@Body request: TokenRefreshRequest): Response<TokenRefreshResponse>
 
-    // Get a list of tables for a specific location
-    @GET("tables/{locationId}")
-    suspend fun getTablesByLocation(@Path("locationId") locationId: Int): Response<List<Table>>
+    @GET("/api/v1/staff/tables/{locationId}")
+    suspend fun getTablesByLocation(@Path("locationId") locationId: Int): Response<TableListResponse>
 
-    // Search for users by mobile number and/or username
-    @GET("users")
-    suspend fun findUser(@Query("mobile") mobile: String?, @Query("username") username: String?): Response<Customer>
+    @GET("/api/v1/staff/users")
+    suspend fun getOrCreateCustomer(
+        @Query("mobile") mobile: String?,
+        @Query("userName") username: String?
+    ): Response<CustomerResponse>
 
-    // Get the menu for a specific location
-    @GET("menus/{locationId}")
-    suspend fun getMenuByLocation(@Path("locationId") locationId: Int): Response<List<MenuItem>>
+    @POST("/api/v1/staff/occupyTable")
+    suspend fun occupyTable(@Body request: OccupyTableRequest): Response<OccupyTableResponse>
 
-    // Create a new KOT (Kitchen Order Ticket)
+    @GET("staff/menu/{locationId}")
+    suspend fun getMenuByLocation(
+        @Path("locationId") locationId: Int,
+        @Query("search") searchTerm: String? = null): Response<List<MenuItem>>
+
     @POST("kot")
     suspend fun createKot(@Body request: KotRequest): Response<KotResponse>
 
-    // Find and retrieve a specific bill
     @GET("findBill")
     suspend fun findBill(@Query("orderId") orderId: String): Response<CustomerBill>
 
-    // Approve a bill
     @PATCH("approveBill/{orderId}")
     suspend fun approveBill(@Path("orderId") orderId: String): Response<ApproveBillResponse>
 
-    // Update the availability of a menu item for a specific location
     @PATCH("menuItemAvailability/{locationId}/{menuId}")
     suspend fun updateMenuItemAvailability(
         @Path("locationId") locationId: String,

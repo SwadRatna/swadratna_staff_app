@@ -11,69 +11,88 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.swadratna.swadratna_staff.data.remote.model.Table
 import com.swadratna.swadratna_staff.navigation.NavigationRoute
+import com.swadratna.swadratna_staff.ui.screens.orders.OrderManagementViewModel
+import com.swadratna.swadratna_staff.ui.screens.orders.TableListState
+import com.google.accompanist.swiperefresh.SwipeRefresh
+import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 
-data class Table(
-    val tableNumber: Int, var personName: String? = null
-)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TablesScreen(navController: NavController) {
-    val tables = remember {
-        mutableStateListOf(
-            *(1..14).map {
-                if (it == 4) {
-                    Table(tableNumber = it, personName = "Vivek Kumar")
-                } else {
-                    Table(tableNumber = it)
-                }
-            }.toTypedArray()
-        )
-    }
+fun TablesScreen(navController: NavController,
+                 orderManagementViewModel: OrderManagementViewModel = hiltViewModel()
+) {
+    val tableListState by orderManagementViewModel.tableListState.collectAsState()
+    val isRefreshing by orderManagementViewModel.isRefreshing.collectAsState()
 
     var showDialog by remember { mutableStateOf(false) }
     var selectedTable by remember { mutableStateOf<Table?>(null) }
 
-    if (showDialog && selectedTable != null) {
-        AssignTableDialog(
-            tableNumber = selectedTable!!.tableNumber,
-            onDismiss = { showDialog = false },
-            onSubmit = { fullName, _ ->
-                val index = tables.indexOfFirst { it.tableNumber == selectedTable!!.tableNumber }
-                if (index != -1) {
-                    tables[index] = tables[index].copy(personName = fullName)
-                }
-                showDialog = false
-            })
-    }
-    Box(modifier = Modifier
-        .fillMaxSize()
-        .padding(horizontal = 16.dp, vertical = 8.dp)) {
+    val staffLocationId by orderManagementViewModel.staffLocationId.collectAsState()
 
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(2),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            items(tables) { table ->
-                TableCard(
-                    table = table, onClick = {
-                        if (table.personName == null) {
-                            selectedTable = table
-                            showDialog = true
-                        } else {
-                            navController.navigate(
-                                "${NavigationRoute.OrderTaking.route}/${table.tableNumber}/${table.personName}"
-                            )
+    SwipeRefresh(
+        state = rememberSwipeRefreshState(isRefreshing),
+        onRefresh = {
+            staffLocationId?.let {
+                orderManagementViewModel.getTables(it)
+            }
+        },
+        modifier = Modifier.fillMaxSize()
+    ) {
+        Box(modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 16.dp, vertical = 8.dp)) {
+
+            when (tableListState) {
+                is TableListState.Loading -> {
+                    // Only show loading indicator if not refreshing
+                    if (!isRefreshing) {
+                        CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                    }
+                }
+                is TableListState.Error -> {
+                    Text(text = (tableListState as TableListState.Error).message, color = MaterialTheme.colorScheme.error, modifier = Modifier.align(Alignment.Center))
+                }
+                is TableListState.Success -> {
+                    val tables = (tableListState as TableListState.Success).tables.tables // Access the list of tables
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(2),
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        items(tables) { table ->
+                            TableCard(
+                                table = table, onClick = {
+                                    if (!table.is_occupied) {
+                                        selectedTable = table
+                                        showDialog = true
+                                    } else {
+                                        navController.navigate(
+                                            "${NavigationRoute.OrderTaking.route}/${table.table_id}/${table.status}"
+                                        )
+                                    }
+                                })
                         }
-                    })
+                    }
+                }
+            }
+
+            if (showDialog && selectedTable != null) {
+                AssignTableDialog(
+                    tableNumber = selectedTable!!.id,
+                    onDismiss = { showDialog = false },
+                    onTableOccupied = { orderId ->
+                        showDialog = false // Dismiss the dialog
+                        navController.navigate("${NavigationRoute.OrderTaking.route}/${selectedTable!!.id}/${orderId}")
+                    }
+                )
             }
         }
     }
@@ -91,19 +110,19 @@ fun TableCard(table: Table, onClick: () -> Unit) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(if (table.personName != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant),
+                .background(if (table.is_occupied) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant),
             contentAlignment = Alignment.Center
         ) {
-            if (table.personName != null) {
+            if (table.is_occupied) {
                 Text(
-                    text = "${table.tableNumber} ${table.personName}",
+                    text = "${table.table_id} ${table.occupancy.user_name}",
                     color = MaterialTheme.colorScheme.onPrimary,
                     fontWeight = FontWeight.Bold,
                     fontSize = 16.sp
                 )
             } else {
                 Text(
-                    text = "${table.tableNumber}.",
+                    text = "${table.table_id}.",
                     color = MaterialTheme.colorScheme.onSurface,
                     fontSize = 16.sp
                 )

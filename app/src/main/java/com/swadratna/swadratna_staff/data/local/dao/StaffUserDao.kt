@@ -15,6 +15,9 @@ interface StaffUserDao {
     @Query("SELECT * FROM staff_users WHERE id = :userId")
     fun getStaffUser(userId: String): Flow<StaffUser?>
 
+    @Query("SELECT * FROM staff_users LIMIT 1") // New function
+    fun getLoggedInStaffUser(): Flow<StaffUser?>
+
     @Query("DELETE FROM staff_users")
     suspend fun clearStaffUsers()
 }
