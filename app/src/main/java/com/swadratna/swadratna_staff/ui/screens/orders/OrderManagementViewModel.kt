@@ -5,14 +5,15 @@ import androidx.lifecycle.viewModelScope
 import com.swadratna.swadratna_staff.data.local.dao.StaffUserDao
 import com.swadratna.swadratna_staff.data.remote.model.Category
 import com.swadratna.swadratna_staff.data.remote.model.CustomerBill
-import com.swadratna.swadratna_staff.data.remote.model.MenuItem
 import com.swadratna.swadratna_staff.data.remote.model.Customer
 import com.swadratna.swadratna_staff.data.remote.model.KotRequest
 import com.swadratna.swadratna_staff.data.remote.model.LineItem
+import com.swadratna.swadratna_staff.data.remote.model.MenuItem
 import com.swadratna.swadratna_staff.data.remote.model.OccupyTableRequest
 import com.swadratna.swadratna_staff.data.remote.model.OccupyTableResponse
 import com.swadratna.swadratna_staff.data.remote.model.TableListResponse
 import com.swadratna.swadratna_staff.data.remote.repositories.OrderManagementRepository
+
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -136,7 +137,7 @@ class OrderManagementViewModel @Inject constructor(
                 LineItem(menuItemId = itemId, quantity = quantity , instructions = "")
             }
             val kotRequest = KotRequest(orderId = orderId, lineItems = kotItems)
-            repository.createKot(kotRequest)
+            repository.createKot( kotRequest) // Added X-Key
                 .onSuccess {
                     _orderConfirmationState.value = OrderConfirmationState.Success
                     _currentOrderItems.value = emptyMap()
@@ -204,7 +205,7 @@ class OrderManagementViewModel @Inject constructor(
         viewModelScope.launch {
             _loading.value = true
             _error.value = null
-            repository.createKot(kotRequest)
+            repository.createKot( kotRequest) // Added X-Key
                 .onSuccess { /* Handle success, maybe refresh bill or tables */ }
                 .onFailure { _error.value = it.message }
             _loading.value = false

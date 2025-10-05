@@ -4,138 +4,248 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.*
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.hilt.navigation.compose.hiltViewModel
-import com.swadratna.swadratna_staff.ui.components.SwipeRefreshContainer
-import com.swadratna.swadratna_staff.data.remote.model.Order
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavController
+import androidx.room.util.TableInfo
+import com.swadratna.swadratna_staff.data.remote.model.KotX
+import com.swadratna.swadratna_staff.data.remote.model.OrderDetailsX
+import com.swadratna.swadratna_staff.data.remote.model.OrderXX
 
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun OrdersScreen(viewModel: OrdersViewModel = hiltViewModel()) {
-    val orders by viewModel.orders.collectAsState()
-    val isLoading by viewModel.isLoading.collectAsState()
+fun OrdersScreen(
+    navController: NavController,
+    orderID: String?,
+    viewModel: OrdersViewModel = hiltViewModel()
+) {
+    val orderDetailsXState by viewModel.detailedOrderState.collectAsStateWithLifecycle()
 
-    SwipeRefreshContainer(
-        isRefreshing = isLoading,
-        onRefresh = { viewModel.fetchOrders() }
-    ) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            SearchBar()
-            FilterButtons()
-            LazyColumn(
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                items(orders) { order ->
-                    OrderCard(order = order)
+    LaunchedEffect(orderID) {
+        orderID?.let {
+            viewModel.getOrderDetail(it)
+        }
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Order Details") },
+                navigationIcon = {
+                    IconButton(onClick = { navController.popBackStack() }) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Go back")
+                    }
+                }
+            )
+        },
+        bottomBar = {
+            if (orderDetailsXState is OrderDetailsXState.Success) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp))
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Button(
+                        onClick = { /* TODO: Implement Generate Bill logic */ },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(50.dp)
+                    ) {
+                        Text("GENERATE BILL", fontWeight = FontWeight.SemiBold)
+                    }
+                }
+            }
+        }
+    ) { paddingValues ->
+        when (orderDetailsXState) {
+            is OrderDetailsXState.Loading -> {
+                Box(modifier = Modifier.fillMaxSize().padding(paddingValues), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
+            }
+            is OrderDetailsXState.Success -> {
+                val orderDetails = (orderDetailsXState as OrderDetailsXState.Success).order
+                SuccessLayout(orderDetails, paddingValues)
+            }
+            is OrderDetailsXState.Error -> {
+                Box(modifier = Modifier.fillMaxSize().padding(paddingValues), contentAlignment = Alignment.Center) {
+                    Text(
+                        text = "Error: ${(orderDetailsXState as OrderDetailsXState.Error).message}",
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.padding(16.dp)
+                    )
+                }
+            }
+            OrderDetailsXState.Idle -> {
+                Box(modifier = Modifier.fillMaxSize().padding(paddingValues), contentAlignment = Alignment.Center) {
+                    Text(text = "Loading order details...")
                 }
             }
         }
     }
 }
 
-@Composable
-fun SearchBar() {
-    val searchQuery = remember { mutableStateOf("") }
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        OutlinedTextField(
-            value = searchQuery.value,
-            onValueChange = { searchQuery.value = it },
-            placeholder = { Text("Search orders...") },
-            leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search Icon") },
-            modifier = Modifier.weight(1f),
-            shape = RoundedCornerShape(8.dp)
-        )
-        Spacer(modifier = Modifier.width(16.dp))
-    }
-}
+// ---------------------------------------------------------------------------------------------
 
 @Composable
-fun FilterButtons() {
-    Row(
+fun SuccessLayout(orderDetails: OrderDetailsX, paddingValues: PaddingValues) {
+    LazyColumn(
         modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+            .fillMaxSize()
+            .padding(paddingValues),
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Button(onClick = { /* Handle filter */ }) {
-            Text("New")
+        // 1. ORDER SUMMARY CARD
+        item {
+            OrderSummaryCard(orderDetails.order)
         }
-        Button(onClick = { /* Handle filter */ }) {
-            Text("In Progress")
+
+        // 2. KOT LIST HEADING
+        item {
+            Text(
+                text = "Kitchen Orders (KOTs)",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(top = 8.dp)
+            )
         }
-        Button(onClick = { /* Handle filter */ }) {
-            Text("Scheduled")
+
+        // 3. KOT ITEMS
+        items(orderDetails.kots) { kot ->
+            KotCard(kot)
         }
     }
 }
 
+// ---------------------------------------------------------------------------------------------
+
 @Composable
-fun OrderCard(order: Order) {
+fun OrderSummaryCard(order: OrderXX) {
     Card(
-        shape = RoundedCornerShape(8.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier.fillMaxWidth(),
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
+            // Order ID
+            Text(
+                text = "Order ID: ${order.id}",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Status Badge
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .clip(MaterialTheme.shapes.extraSmall)
+                    .background(getStatusColor(order.order_status).copy(alpha = 0.2f))
+                    .padding(horizontal = 8.dp, vertical = 4.dp)
+            ) {
+                Icon(
+                    Icons.Default.Info,
+                    contentDescription = "Status",
+                    tint = getStatusColor(order.order_status),
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = order.order_status.uppercase(),
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = getStatusColor(order.order_status)
+                )
+            }
+            // Add other relevant summary details here (e.g., table number, time)
+        }
+    }
+}
+
+@Composable
+fun KotCard(kot: KotX) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            // KOT Header
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    text = "Order ${order.orderNumber}",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp
+                    text = "KOT #${kot.kot_number}",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
                 )
                 Text(
-                    text = order.status,
-                    color = when (order.status) {
-                        "New" -> MaterialTheme.colorScheme.error
-                        "In Progress" -> MaterialTheme.colorScheme.tertiary
-                        else -> MaterialTheme.colorScheme.secondary
-                    },
-                    fontWeight = FontWeight.Bold
+                    text = kot.status.uppercase(),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = getStatusColor(kot.status)
                 )
             }
             Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = order.customerName,
-                fontWeight = FontWeight.Bold,
-                fontSize = 20.sp
-            )
+            Divider()
             Spacer(modifier = Modifier.height(8.dp))
-            order.items.forEach { item ->
-                Text(text = item)
+
+            // KOT Items List
+            kot.items.forEach { kotItem ->
+
+                Row(modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(4.dp),
+                    verticalAlignment = Alignment.CenterVertically) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth(0.8f)
+                            .padding(vertical = 4.dp),
+                        verticalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "${kotItem.menu_item.name}",
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                        Text(
+                            text = "${kotItem.menu_item.description}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Text(
+                        text = "Qty: ${kotItem.quantity}",
+                        style = MaterialTheme.typography.labelMedium,
+                    )
+                }
             }
         }
     }
 }
 
-@Preview(showBackground = true)
+// ---------------------------------------------------------------------------------------------
+
 @Composable
-fun OrdersScreenPreview() {
-    OrdersScreen()
+fun getStatusColor(status: String): Color {
+    return when (status.lowercase()) {
+        "pending" -> Color(0xFFFF9800) // Amber
+        "prepared" -> Color(0xFF4CAF50) // Green
+        "served" -> Color(0xFF2196F3) // Blue
+        "cancelled" -> MaterialTheme.colorScheme.error // Red
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
 }

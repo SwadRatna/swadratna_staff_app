@@ -2,42 +2,47 @@ package com.swadratna.swadratna_staff.ui.screens.orders
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.swadratna.swadratna_staff.data.local.dao.StaffUserDao
+
+import com.swadratna.swadratna_staff.data.remote.model.OrderDetailsX
+import com.swadratna.swadratna_staff.data.remote.repositories.OrderManagementRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import com.swadratna.swadratna_staff.data.remote.model.Order
 import javax.inject.Inject
+
+sealed class OrderDetailsXState {
+    object Loading : OrderDetailsXState()
+    data class Success(val order: OrderDetailsX) : OrderDetailsXState()
+    data class Error(val message: String) : OrderDetailsXState()
+    object Idle : OrderDetailsXState()
+}
 
 @HiltViewModel
 class OrdersViewModel @Inject constructor(
-    // Assuming an OrderRepository will be injected here later
+    private val repository: OrderManagementRepository,
+    private val staffUserDao: StaffUserDao // Assuming this is needed for X-Key or other user info
 ) : ViewModel() {
 
-    private val _orders = MutableStateFlow<List<Order>>(emptyList())
-    val orders: StateFlow<List<Order>> = _orders.asStateFlow()
+    private val _detailedOrderState = MutableStateFlow<OrderDetailsXState>(OrderDetailsXState.Idle)
+    val detailedOrderState: StateFlow<OrderDetailsXState> = _detailedOrderState.asStateFlow()
 
-    private val _isLoading = MutableStateFlow(false)
-    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
-
-    init {
-        fetchOrders()
+    fun getOrderDetail(orderID: String) {
+        viewModelScope.launch {
+            _detailedOrderState.value = OrderDetailsXState.Loading
+            repository.getOrderDetail(orderID)
+                .onSuccess {
+                    _detailedOrderState.value = OrderDetailsXState.Success(it)
+                }
+                .onFailure {
+                    _detailedOrderState.value = OrderDetailsXState.Error(it.message ?: "Unknown error fetching order details")
+                }
+        }
     }
 
-    fun fetchOrders() {
-        viewModelScope.launch {
-            _isLoading.value = true
-            delay(2000) // Simulate network delay
-            _orders.value = listOf(
-                Order("#1001", "Allan Johnson", listOf("Spaghetti bolognese", "Water"), "New"),
-                Order("#1002", "Bob Williams", listOf("Chicken Burger", "Coca-cola"), "New"),
-                Order("#1003", "Charlie Brown", listOf("Veggie Burger", "French Fries", "Water"), "In Progress"),
-                Order("#1004", "Diana Prince", listOf("Pizza Margherita", "Sprite"), "In Progress"),
-                Order("#1005", "Harry Eagle", listOf("Tuna Pizza", "Fanta Orange", "Water"), "Completed")
-            )
-            _isLoading.value = false
-        }
+    fun resetDetailedOrderState() {
+        _detailedOrderState.value = OrderDetailsXState.Idle
     }
 }

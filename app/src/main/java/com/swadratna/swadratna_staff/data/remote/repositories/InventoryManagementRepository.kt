@@ -1,6 +1,5 @@
 package com.swadratna.swadratna_staff.data.remote.repositories
 
-import com.swadratna.swadratna_staff.data.remote.model.MenuItem
 import com.swadratna.swadratna_staff.data.remote.model.MenuResponse
 import com.swadratna.swadratna_staff.data.remote.services.ApiService
 import com.swadratna.swadratna_staff.data.remote.services.AvailabilityRequest

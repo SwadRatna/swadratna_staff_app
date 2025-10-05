@@ -1,14 +1,14 @@
 package com.swadratna.swadratna_staff.data.remote.model
 
+import com.google.gson.annotations.SerializedName
+
 data class KotItem(
-    val created_at: String,
     val id: Int,
-    val instructions: String,
-    val kot_id: Int,
-    val menu_item_id: Int,
-    val price: Int,
+    val instructions: String?,
+    @SerializedName("menu_item") val menuItem: MenuItem,
+    @SerializedName("menu_item_id") val menuItemId: Int,
+    val price: Double,
     val quantity: Int,
     val status: String,
-    val tenant_id: Int,
-    val updated_at: String
+    @SerializedName("total_price") val totalPrice: Double
 )

@@ -119,8 +119,11 @@ fun NavigationComponent(
                     }
                 })
             }
-            composable(route = NavigationRoute.Orders.route) {
-                OrdersScreen()
+            composable(
+                route = "${NavigationRoute.Orders.route}/{orderId}",
+                arguments = listOf(navArgument("orderId") { type = NavType.StringType })) { backStackEntry ->
+                val orderId = backStackEntry.arguments?.getString("orderId")
+                OrdersScreen(navController = navController, orderID = orderId)
             }
             composable(route = NavigationRoute.Tables.route) {
                 TablesScreen(navController)
@@ -141,7 +144,8 @@ fun NavigationComponent(
                 OrderTakingScreen(
                     tableNumber = tableNumber,
                     orderId = orderId,
-                    onBack = { navController.popBackStack() })
+                    onBack = { navController.popBackStack() },
+                    navController = navController)
             }
         }
     }
@@ -149,7 +153,9 @@ fun NavigationComponent(
 
 sealed class NavigationRoute(val route: String, val title: String, val icon: ImageVector) {
     object Login : NavigationRoute("login", "Login", Icons.Default.Person)
-    object Orders : NavigationRoute("orders", "Orders", Icons.Default.List)
+    object Orders : NavigationRoute("orders", "Orders", Icons.Default.List) {
+        fun createRoute(orderId: String) = "orders/$orderId"
+    }
     object Tables : NavigationRoute("tables", "Tables", Icons.Default.Home)
     object Inventory : NavigationRoute("inventory", "Inventory", Icons.Default.ShoppingCart)
     object Profile : NavigationRoute("profile", "Profile", Icons.Default.Person)

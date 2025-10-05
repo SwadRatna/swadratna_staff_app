@@ -4,9 +4,11 @@ import com.swadratna.swadratna_staff.data.remote.model.Customer
 import com.swadratna.swadratna_staff.data.remote.model.CustomerBill
 import com.swadratna.swadratna_staff.data.remote.model.KotRequest
 import com.swadratna.swadratna_staff.data.remote.model.KotResponse
+
 import com.swadratna.swadratna_staff.data.remote.model.MenuResponse
 import com.swadratna.swadratna_staff.data.remote.model.OccupyTableRequest
 import com.swadratna.swadratna_staff.data.remote.model.OccupyTableResponse
+import com.swadratna.swadratna_staff.data.remote.model.OrderDetailsX
 import com.swadratna.swadratna_staff.data.remote.model.TableListResponse
 import com.swadratna.swadratna_staff.data.remote.services.ApiService
 import com.swadratna.swadratna_staff.data.remote.services.ApproveBillResponse
@@ -126,6 +128,21 @@ class OrderManagementRepository @Inject constructor(
                 } ?: Result.failure(Exception("Failed to approve bill: Empty response"))
             } else {
                 Result.failure(Exception("Failed to approve bill: ${response.message()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getOrderDetail(orderID: String): Result<OrderDetailsX> {
+        return try {
+            val response = apiService.getOrderDetail( orderID)
+            if (response.isSuccessful) {
+                response.body()?.let {
+                    Result.success(it)
+                } ?: Result.failure(Exception("Order details not found"))
+            } else {
+                Result.failure(Exception("Failed to fetch order details: ${response.message()}"))
             }
         } catch (e: Exception) {
             Result.failure(e)

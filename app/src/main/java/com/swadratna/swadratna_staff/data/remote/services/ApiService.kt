@@ -2,7 +2,6 @@ package com.swadratna.swadratna_staff.data.remote.services
 
 import com.swadratna.swadratna_staff.data.remote.model.CustomerBill
 import com.swadratna.swadratna_staff.data.remote.model.CustomerResponse
-import com.swadratna.swadratna_staff.data.remote.model.MenuItem
 import com.swadratna.swadratna_staff.data.remote.model.MenuResponse
 import com.swadratna.swadratna_staff.data.remote.model.OccupyTableRequest
 import com.swadratna.swadratna_staff.data.remote.model.OccupyTableResponse
@@ -20,6 +19,8 @@ import retrofit2.http.Query
 import retrofit2.http.Header
 import com.swadratna.swadratna_staff.data.remote.model.KotRequest
 import com.swadratna.swadratna_staff.data.remote.model.KotResponse
+
+import com.swadratna.swadratna_staff.data.remote.model.OrderDetailsX
 
 interface ApiService {
 
@@ -61,4 +62,7 @@ interface ApiService {
         @Path("menuId") menuId: String,
         @Body request: AvailabilityRequest
     ): Response<AvailabilityResponse>
+
+    @GET("/api/v1/staff/orders/detail/{orderID}")
+    suspend fun getOrderDetail(@Path("orderID") orderID: String): Response<OrderDetailsX>
 }

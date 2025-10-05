@@ -9,10 +9,13 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountBox
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -27,9 +30,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavController
 import com.swadratna.swadratna_staff.data.remote.model.Category // Import your actual Category model
-import com.swadratna.swadratna_staff.data.remote.model.MenuItem // Import your actual MenuItem model
+import com.swadratna.swadratna_staff.data.remote.model.MenuItem
 import com.swadratna.swadratna_staff.data.remote.services.KotItem
+import com.swadratna.swadratna_staff.navigation.NavigationRoute
 import com.swadratna.swadratna_staff.ui.components.SlideToConfirmButton
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -38,6 +43,7 @@ fun OrderTakingScreen(
     tableNumber: Int,
     orderId: String,
     onBack: () -> Unit,
+    navController: NavController, // Added navController
     viewModel: OrderManagementViewModel = hiltViewModel()
 ) {
     // UPDATED STATE FLOWS: Using the new states from the ViewModel
@@ -52,6 +58,7 @@ fun OrderTakingScreen(
     var searchQuery by remember { mutableStateOf("") }
     var showOrderSummary by remember { mutableStateOf(false) }
     var showOrderConfirmationDialog by remember { mutableStateOf(false) }
+    var selectedTab by rememberSaveable { mutableStateOf(0) } // 0 for Menu, 1 for Orders
 
     LaunchedEffect(Unit) {
         viewModel.getMenuItems("")
@@ -123,104 +130,131 @@ fun OrderTakingScreen(
                 windowInsets = WindowInsets(0.dp)
             )
         },
+        bottomBar = {
+            NavigationBar {
+                // selectedTab is now defined outside this block
+                NavigationBarItem(
+                    selected = selectedTab == 0,
+                    onClick = { selectedTab = 0 },
+                    icon = { Icon(Icons.Filled.Menu, contentDescription = "Menu") },
+                    label = { Text("Menu") }
+                )
+                NavigationBarItem(
+                    selected = selectedTab == 1,
+                    onClick = {
+                        selectedTab = 1
+                        navController.navigate(NavigationRoute.Orders.createRoute(orderId))
+                    },
+                    icon = { Icon(Icons.Filled.AccountBox, contentDescription = "Orders") },
+                    label = { Text("Orders") }
+                )
+            }
+        },
         containerColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->
         Box( modifier = Modifier
             .fillMaxSize()
             .padding(paddingValues)) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-            ) {
-                if (loading) {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator()
-                    }
-                } else if (error != null) {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text("Error: $error", color = MaterialTheme.colorScheme.error)
-                    }
-                } else {
-                    SearchBar(
-                        query = searchQuery,
-                        onQueryChanged = { searchQuery = it },
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                    )
-
-                    Row(
+            when (selectedTab) {
+                0 -> { // Menu and Ordering Screen
+                    Column(
                         modifier = Modifier
                             .fillMaxSize()
                     ) {
-                        CategoryList(
-                            categories = categories,
-                            selectedCategoryId = selectedCategoryId, // Pass ID
-                            onCategorySelected = { selectedCategoryId = it?.id }, // Use category.id
-                            modifier = Modifier.weight(0.35f)
-                        )
+                        if (loading) {
+                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                CircularProgressIndicator()
+                            }
+                        } else if (error != null) {
+                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                Text("Error: $error", color = MaterialTheme.colorScheme.error)
+                            }
+                        } else {
+                            SearchBar(
+                                query = searchQuery,
+                                onQueryChanged = { searchQuery = it },
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                            )
 
-                        Spacer(modifier = Modifier.width(12.dp))
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                            ) {
+                                CategoryList(
+                                    categories = categories,
+                                    selectedCategoryId = selectedCategoryId, // Pass ID
+                                    onCategorySelected = { selectedCategoryId = it?.id }, // Use category.id
+                                    modifier = Modifier.weight(0.35f)
+                                )
 
-                        MenuItemList(
-                            menuItems = filteredMenuItems,
-                            orderItems = currentOrderItems,
-                            onUpdateOrder = { itemId, quantity ->
-                                viewModel.updateOrderItem(itemId, quantity)
-                            },
-                            modifier = Modifier.weight(0.65f)
+                                Spacer(modifier = Modifier.width(12.dp))
+
+                                MenuItemList(
+                                    menuItems = filteredMenuItems,
+                                    orderItems = currentOrderItems,
+                                    onUpdateOrder = { itemId, quantity ->
+                                        viewModel.updateOrderItem(itemId, quantity)
+                                    },
+                                    modifier = Modifier.weight(0.65f)
+                                )
+                            }
+                        }
+                    }
+
+                    if (showOrderConfirmationDialog) {
+                        OrderConfirmationDialog(
+                            orderId = orderId,
+                            tableNumber = tableNumber,
+                            currentOrderItems = currentOrderItems,
+                            menuItemsMap = menuItemsMap,
+                            orderConfirmationState = orderConfirmationState,
+                            onConfirmOrder = { viewModel.confirmOrder(orderId.toInt()) },
+                            onDismiss = { showOrderConfirmationDialog = false; viewModel.resetOrderConfirmationState() },
+                            onResetState = { viewModel.resetOrderConfirmationState() }
                         )
                     }
-                }
-            }
-
-            if (showOrderConfirmationDialog) {
-                OrderConfirmationDialog(
-                    orderId = orderId,
-                    tableNumber = tableNumber,
-                    currentOrderItems = currentOrderItems,
-                    menuItemsMap = menuItemsMap,
-                    orderConfirmationState = orderConfirmationState,
-                    onConfirmOrder = { viewModel.confirmOrder(orderId.toInt()) },
-                    onDismiss = { showOrderConfirmationDialog = false; viewModel.resetOrderConfirmationState() },
-                    onResetState = { viewModel.resetOrderConfirmationState() }
-                )
-            }
-             if (totalItemsInOrder > 0) {
-                 Card(
-                     modifier = Modifier
-                         .fillMaxWidth()
-                         .align(Alignment.BottomCenter),
-                     shape = RoundedCornerShape(12.dp),
-                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(0.8f))
-                 ) {
-                     Column(modifier = Modifier
-                         .fillMaxWidth()
-                         .padding(horizontal = 16.dp, vertical = 8.dp)
-                     ) {
-                         OrderSummaryCard(
-                             currentOrderItems = currentOrderItems,
-                             menuItemsMap = menuItemsMap,
-                             onUpdateOrder = { itemId, quantity -> viewModel.updateOrderItem(itemId, quantity) },
-                             showOrderSummary = showOrderSummary,
-                             onToggleSummary = { showOrderSummary = !showOrderSummary }
-                         )
-                         Button(
-                             onClick = { showOrderConfirmationDialog = true },
+                     if (totalItemsInOrder > 0) {
+                         Card(
                              modifier = Modifier
                                  .fillMaxWidth()
-                                 .padding(horizontal = 16.dp)
-                                 .height(56.dp),
-                             shape = RoundedCornerShape(12.dp)
+                                 .align(Alignment.BottomCenter),
+                             shape = RoundedCornerShape(12.dp),
+                             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(0.8f))
                          ) {
-                             Text(
-                                 "Order ($totalItemsInOrder items)",
-                                 fontSize = 16.sp,
-                                 fontWeight = FontWeight.SemiBold
-                             )
+                             Column(modifier = Modifier
+                                 .fillMaxWidth()
+                                 .padding(horizontal = 16.dp, vertical = 8.dp)
+                             ) {
+                                 OrderSummaryCard(
+                                     currentOrderItems = currentOrderItems,
+                                     menuItemsMap = menuItemsMap,
+                                     onUpdateOrder = { itemId, quantity -> viewModel.updateOrderItem(itemId, quantity) },
+                                     showOrderSummary = showOrderSummary,
+                                     onToggleSummary = { showOrderSummary = !showOrderSummary }
+                                 )
+                                 Button(
+                                     onClick = { showOrderConfirmationDialog = true },
+                                     modifier = Modifier
+                                         .fillMaxWidth()
+                                         .padding(horizontal = 16.dp)
+                                         .height(56.dp),
+                                     shape = RoundedCornerShape(12.dp)
+                                 ) {
+                                     Text(
+                                         "Order ($totalItemsInOrder items)",
+                                         fontSize = 16.sp,
+                                         fontWeight = FontWeight.SemiBold
+                                     )
+                                 }
+                             }
+
                          }
                      }
-
-                 }
-             }
+                }
+                1 -> { // Orders Screen
+                    OrdersScreen(navController = navController, orderID = orderId)
+                }
+            }
         }
     }
 }
