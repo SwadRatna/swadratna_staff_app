@@ -12,3 +12,5 @@ val Orange80 = Color(0xFFFFAD34) // A vibrant orange
 val Red40 = Color(0xFFD3482F) // A darker red for light themes
 val RedGrey40 = Color(0xFFC65528) // A deeper red
 val Orange40 = Color(0xFF754800) // A standard orange
+
+val AppGreen = Color(0xFF1FD018)

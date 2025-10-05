@@ -14,8 +14,6 @@ data class LoginResponse(val token: String)
 
 // 5. POST /kot
 data class KotItem(val menuItemId: String, val quantity: Int)
-data class KotRequest(val tableId: String, val items: List<KotItem>)
-data class KotResponse(val orderId: String)
 
 // 7. PATCH /approveBill/:orderId
 data class ApproveBillResponse(val message: String)

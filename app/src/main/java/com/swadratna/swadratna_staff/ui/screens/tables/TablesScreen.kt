@@ -21,7 +21,7 @@ import com.swadratna.swadratna_staff.navigation.NavigationRoute
 import com.swadratna.swadratna_staff.ui.screens.orders.OrderManagementViewModel
 import com.swadratna.swadratna_staff.ui.screens.orders.TableListState
 import com.google.accompanist.swiperefresh.SwipeRefresh
-import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
+import com.swadratna.swadratna_staff.ui.components.SwipeRefreshContainer
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -37,14 +37,13 @@ fun TablesScreen(navController: NavController,
 
     val staffLocationId by orderManagementViewModel.staffLocationId.collectAsState()
 
-    SwipeRefresh(
-        state = rememberSwipeRefreshState(isRefreshing),
+    SwipeRefreshContainer(
+        isRefreshing = isRefreshing,
         onRefresh = {
             staffLocationId?.let {
                 orderManagementViewModel.getTables(it)
             }
-        },
-        modifier = Modifier.fillMaxSize()
+        }
     ) {
         Box(modifier = Modifier
             .fillMaxSize()
@@ -74,9 +73,7 @@ fun TablesScreen(navController: NavController,
                                         selectedTable = table
                                         showDialog = true
                                     } else {
-                                        navController.navigate(
-                                            "${NavigationRoute.OrderTaking.route}/${table.table_id}/${table.status}"
-                                        )
+                                        navController.navigate("${NavigationRoute.OrderTaking.route}/${table.id}/${table.occupancy.order_id}")
                                     }
                                 })
                         }

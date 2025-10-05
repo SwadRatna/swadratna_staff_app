@@ -3,20 +3,24 @@ package com.swadratna.swadratna_staff.ui.screens.orders
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.swadratna.swadratna_staff.data.local.dao.StaffUserDao
+import com.swadratna.swadratna_staff.data.remote.model.Category
 import com.swadratna.swadratna_staff.data.remote.model.CustomerBill
 import com.swadratna.swadratna_staff.data.remote.model.MenuItem
 import com.swadratna.swadratna_staff.data.remote.model.Customer
+import com.swadratna.swadratna_staff.data.remote.model.KotRequest
+import com.swadratna.swadratna_staff.data.remote.model.LineItem
 import com.swadratna.swadratna_staff.data.remote.model.OccupyTableRequest
 import com.swadratna.swadratna_staff.data.remote.model.OccupyTableResponse
 import com.swadratna.swadratna_staff.data.remote.model.TableListResponse
 import com.swadratna.swadratna_staff.data.remote.repositories.OrderManagementRepository
-import com.swadratna.swadratna_staff.data.remote.services.KotRequest
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -40,6 +44,13 @@ sealed class OccupyTableState {
     data class Error(val message: String) : OccupyTableState()
 }
 
+sealed class OrderConfirmationState {
+    object Idle : OrderConfirmationState()
+    object Loading : OrderConfirmationState()
+    object Success : OrderConfirmationState()
+    data class Error(val message: String) : OrderConfirmationState()
+}
+
 @HiltViewModel
 class OrderManagementViewModel @Inject constructor(
     private val repository: OrderManagementRepository,
@@ -49,8 +60,14 @@ class OrderManagementViewModel @Inject constructor(
     private val _tableListState = MutableStateFlow<TableListState>(TableListState.Loading)
     val tableListState: StateFlow<TableListState> = _tableListState
 
-    private val _menuItems = MutableStateFlow<List<MenuItem>>(emptyList())
-    val menuItems: StateFlow<List<MenuItem>> = _menuItems
+    private val _categories = MutableStateFlow<List<Category>>(emptyList())
+    val categories: StateFlow<List<Category>> = _categories.asStateFlow()
+
+    private val _menuItemsMap = MutableStateFlow<Map<String, List<MenuItem>>>(emptyMap())
+    val menuItemsMap: StateFlow<Map<String, List<MenuItem>>> = _menuItemsMap.asStateFlow()
+
+    private val _currentOrderItems = MutableStateFlow<Map<Int, Int>>(emptyMap())
+    val currentOrderItems: StateFlow<Map<Int, Int>> = _currentOrderItems.asStateFlow()
 
     private val _currentBill = MutableStateFlow<CustomerBill?>(null)
     val currentBill: StateFlow<CustomerBill?> = _currentBill
@@ -69,6 +86,9 @@ class OrderManagementViewModel @Inject constructor(
 
     private val _occupyTableState = MutableStateFlow<OccupyTableState>(OccupyTableState.Idle)
     val occupyTableState: StateFlow<OccupyTableState> = _occupyTableState
+
+    private val _orderConfirmationState = MutableStateFlow<OrderConfirmationState>(OrderConfirmationState.Idle)
+    val orderConfirmationState: StateFlow<OrderConfirmationState> = _orderConfirmationState
 
     fun getOrCreateCustomer(mobile: String?, userName: String?) {
         viewModelScope.launch {
@@ -95,6 +115,38 @@ class OrderManagementViewModel @Inject constructor(
 
     fun resetOccupyTableState() {
         _occupyTableState.value = OccupyTableState.Idle
+    }
+
+    fun updateOrderItem(menuItemId: Int, quantity: Int) {
+        _currentOrderItems.update { currentItems ->
+            val newItems = currentItems.toMutableMap()
+            if (quantity > 0) {
+                newItems[menuItemId] = quantity
+            } else {
+                newItems.remove(menuItemId)
+            }
+            newItems
+        }
+    }
+
+    fun confirmOrder(orderId: Int) {
+        viewModelScope.launch {
+            _orderConfirmationState.value = OrderConfirmationState.Loading
+            val kotItems = _currentOrderItems.value.map { (itemId, quantity) ->
+                LineItem(menuItemId = itemId, quantity = quantity , instructions = "")
+            }
+            val kotRequest = KotRequest(orderId = orderId, lineItems = kotItems)
+            repository.createKot(kotRequest)
+                .onSuccess {
+                    _orderConfirmationState.value = OrderConfirmationState.Success
+                    _currentOrderItems.value = emptyMap()
+                }
+                .onFailure { _orderConfirmationState.value = OrderConfirmationState.Error(it.message ?: "Unknown error") }
+        }
+    }
+
+    fun resetOrderConfirmationState() {
+        _orderConfirmationState.value = OrderConfirmationState.Idle
     }
 
     // StateFlow to hold the current staff user's location ID
@@ -124,18 +176,27 @@ class OrderManagementViewModel @Inject constructor(
             repository.getTablesByLocation(locationId)
                 .onSuccess { _tableListState.value = TableListState.Success(it) } // Emit Success state
                 .onFailure { _tableListState.value = TableListState.Error(it.message ?: "Unknown error") } // Emit Error state
-            _isRefreshing.value = false // Set refreshing to false after completion
+            _isRefreshing.value = false
         }
     }
 
-    fun getMenuItems(locationId: Int) {
+    fun getMenuItems( searchQuery: String? = null) {
         viewModelScope.launch {
             _loading.value = true
             _error.value = null
-            repository.getMenuByLocation(locationId)
-                .onSuccess { _menuItems.value = it }
-                .onFailure { _error.value = it.message }
-            _loading.value = false
+            staffLocationId.value?.let {
+                val result = repository.getMenu(it, searchQuery)
+
+                result.onSuccess { response ->
+                    _categories.value = response.categories
+                    _menuItemsMap.value = response.menuItems
+                    _loading.value = false
+
+                }.onFailure { exception ->
+                    _error.value = exception.message
+                    _loading.value = false
+                }
+            }
         }
     }
 

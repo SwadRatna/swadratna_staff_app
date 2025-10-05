@@ -16,23 +16,35 @@ class InventoryViewModel @Inject constructor(
     private val repository: InventoryManagementRepository
 ) : ViewModel() {
 
-    private val _menuItems = MutableStateFlow<List<MenuItem>>(emptyList())
-    private val _categories = MutableStateFlow<List<Category>>(emptyList())
-    private val _selectedCategory = MutableStateFlow<Category?>(null)
-    private val _searchQuery = MutableStateFlow("")
+    private val _loading = MutableStateFlow(false)
+    val loading: StateFlow<Boolean> = _loading
+    private val _error = MutableStateFlow<String?>(null)
+    val error: StateFlow<String?> = _error
 
+    private val _categories = MutableStateFlow<List<Category>>(emptyList())
     val categories: StateFlow<List<Category>> = _categories.asStateFlow()
+
+    private val _menuItemsMap = MutableStateFlow<Map<String, List<MenuItem>>>(emptyMap())
+    val menuItemsMap: StateFlow<Map<String, List<MenuItem>>> = _menuItemsMap.asStateFlow()
+
+    private val _menuItems = MutableStateFlow<List<MenuItem>>(emptyList())
+    val menuItems: StateFlow<List<MenuItem>> = _menuItems.asStateFlow()
+
+    private val _selectedCategory = MutableStateFlow<Category?>(null)
     val selectedCategory: StateFlow<Category?> = _selectedCategory.asStateFlow()
+
+    private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
+
 
     val filteredMenuItems: StateFlow<List<MenuItem>> = combine(
         _menuItems,
         _selectedCategory,
         _searchQuery
     ) { menuItems, selectedCategory, searchQuery ->
-        menuItems.filter {
-            (selectedCategory == null || it.category.categoryId == selectedCategory.categoryId) &&
-            it.name.contains(searchQuery, ignoreCase = true)
+        menuItems.filter { item ->
+            (selectedCategory == null || item.categoryId == selectedCategory.id) &&
+                    item.name.contains(searchQuery, ignoreCase = true)
         }
     }.stateIn(
         viewModelScope,
@@ -43,24 +55,25 @@ class InventoryViewModel @Inject constructor(
     private val LOCATION_ID = 1 // Placeholder for location ID
 
     init {
-        fetchMenuItems()
+        getMenuItems(LOCATION_ID)
     }
 
-    private fun fetchMenuItems() {
+    fun getMenuItems(locationId: Int, searchQuery: String? = null) {
         viewModelScope.launch {
-            when (val result = repository.getMenuByLocation(LOCATION_ID)) {
-                is ApiResult.Success -> {
-                    _menuItems.value = result.data
-                    val uniqueCategories = result.data.map { it.category }.distinctBy { it.categoryId }
-                    _categories.value = uniqueCategories
-                    if (_selectedCategory.value == null && uniqueCategories.isNotEmpty()) {
-                        _selectedCategory.value = uniqueCategories.first()
-                    }
-                }
-                is ApiResult.Error -> {
-                    // Handle error, e.g., log it or show a toast
-                    println("Error fetching menu items: ${result.exception.message}")
-                }
+            _loading.value = true
+            _error.value = null
+
+            val result = repository.getMenu(locationId, searchQuery)
+
+            result.onSuccess { response ->
+                _categories.value = response.categories
+                _menuItemsMap.value = response.menuItems
+                _menuItems.value = response.menuItems.values.flatten()
+                _loading.value = false
+
+            }.onFailure { exception ->
+                _error.value = exception.message
+                _loading.value = false
             }
         }
     }
@@ -71,6 +84,7 @@ class InventoryViewModel @Inject constructor(
 
     fun onSearchQueryChanged(query: String) {
         _searchQuery.value = query
+        getMenuItems(LOCATION_ID, query)
     }
 
     fun onAvailabilityChanged(menuItem: MenuItem, isAvailable: Boolean) {

@@ -2,13 +2,13 @@ package com.swadratna.swadratna_staff.data.remote.repositories
 
 import com.swadratna.swadratna_staff.data.remote.model.Customer
 import com.swadratna.swadratna_staff.data.remote.model.CustomerBill
-import com.swadratna.swadratna_staff.data.remote.model.MenuItem
+import com.swadratna.swadratna_staff.data.remote.model.KotRequest
+import com.swadratna.swadratna_staff.data.remote.model.KotResponse
+import com.swadratna.swadratna_staff.data.remote.model.MenuResponse
 import com.swadratna.swadratna_staff.data.remote.model.OccupyTableRequest
 import com.swadratna.swadratna_staff.data.remote.model.OccupyTableResponse
 import com.swadratna.swadratna_staff.data.remote.model.TableListResponse
 import com.swadratna.swadratna_staff.data.remote.services.ApiService
-import com.swadratna.swadratna_staff.data.remote.services.KotRequest
-import com.swadratna.swadratna_staff.data.remote.services.KotResponse
 import com.swadratna.swadratna_staff.data.remote.services.ApproveBillResponse
 import retrofit2.HttpException
 import java.io.IOException
@@ -34,18 +34,26 @@ class OrderManagementRepository @Inject constructor(
         } as Result<TableListResponse>
     }
 
-    suspend fun getMenuByLocation(locationId: Int): Result<List<MenuItem>> {
+    suspend fun getMenu(
+        locationId: Int,
+        searchQuery: String? = null
+    ): Result<MenuResponse> {
         return try {
-            val response = apiService.getMenuByLocation(locationId)
+            val response = apiService.getMenu(locationId, searchQuery)
+
             if (response.isSuccessful) {
                 response.body()?.let {
                     Result.success(it)
-                } ?: Result.failure(Exception("No menu items found"))
+                } ?: Result.failure(Exception("Successful response, but returned an empty menu list."))
             } else {
-                Result.failure(Exception("Failed to fetch menu: ${response.message()}"))
+                val errorBody = response.errorBody()?.string()
+                val errorMessage = "Failed to fetch menu. Code: ${response.code()}. Error: $errorBody"
+                Result.failure(HttpException(response))
             }
+        } catch (e: IOException) {
+            Result.failure(Exception("Network error while fetching menu. Please check connection.", e))
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.failure(Exception("An unexpected error occurred during menu fetching.", e))
         }
     }
 

@@ -3,6 +3,7 @@ package com.swadratna.swadratna_staff.data.remote.services
 import com.swadratna.swadratna_staff.data.remote.model.CustomerBill
 import com.swadratna.swadratna_staff.data.remote.model.CustomerResponse
 import com.swadratna.swadratna_staff.data.remote.model.MenuItem
+import com.swadratna.swadratna_staff.data.remote.model.MenuResponse
 import com.swadratna.swadratna_staff.data.remote.model.OccupyTableRequest
 import com.swadratna.swadratna_staff.data.remote.model.OccupyTableResponse
 import com.swadratna.swadratna_staff.data.remote.model.Staff_User
@@ -16,6 +17,9 @@ import retrofit2.http.PATCH
 import retrofit2.http.POST
 import retrofit2.http.Path
 import retrofit2.http.Query
+import retrofit2.http.Header
+import com.swadratna.swadratna_staff.data.remote.model.KotRequest
+import com.swadratna.swadratna_staff.data.remote.model.KotResponse
 
 interface ApiService {
 
@@ -37,12 +41,12 @@ interface ApiService {
     @POST("/api/v1/staff/occupyTable")
     suspend fun occupyTable(@Body request: OccupyTableRequest): Response<OccupyTableResponse>
 
-    @GET("staff/menu/{locationId}")
-    suspend fun getMenuByLocation(
+    @GET("/api/v1/staff/menu/{locationId}")
+    suspend fun getMenu(
         @Path("locationId") locationId: Int,
-        @Query("search") searchTerm: String? = null): Response<List<MenuItem>>
-
-    @POST("kot")
+        @Query("search") searchQuery: String? = null
+    ): Response<MenuResponse>
+    @POST("/api/v1/staff/kot")
     suspend fun createKot(@Body request: KotRequest): Response<KotResponse>
 
     @GET("findBill")

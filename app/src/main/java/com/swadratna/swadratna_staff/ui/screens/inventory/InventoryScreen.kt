@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.swadratna.swadratna_staff.data.remote.model.Category
 import com.swadratna.swadratna_staff.data.remote.model.MenuItem
+import com.swadratna.swadratna_staff.ui.components.SwipeRefreshContainer
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -49,29 +50,34 @@ fun InventoryScreen(viewModel: InventoryViewModel = hiltViewModel()) {
     val selectedCategory by viewModel.selectedCategory.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
     val filteredMenuItems by viewModel.filteredMenuItems.collectAsState()
+    val isLoading by viewModel.loading.collectAsState()
 
-    Column(modifier = Modifier.padding(16.dp)) {
-        SearchBar(searchQuery) { newQuery ->
-            viewModel.onSearchQueryChanged(newQuery)
-        }
-        Row(modifier = Modifier.padding(16.dp)) {
-            CategoryList(
-                categories = categories,
-                selectedCategory = selectedCategory,
-                onCategorySelected = { category ->
-                    viewModel.onCategorySelected(category)
-                },
-                modifier = Modifier.weight(0.3f)
-            )
-            Spacer(modifier = Modifier.width(16.dp))
-            MenuItemList(
-                menuItems = filteredMenuItems, onAvailabilityChanged = { item, isAvailable ->
-                    viewModel.onAvailabilityChanged(item, isAvailable)
-                }, modifier = Modifier.weight(0.7f)
-            )
+    SwipeRefreshContainer(
+        isRefreshing = isLoading,
+        onRefresh = { viewModel.getMenuItems(1) } // Assuming location ID 1 for now
+    ) {
+        Column(modifier = Modifier.padding(8.dp)) {
+            SearchBar(searchQuery) { newQuery ->
+                viewModel.onSearchQueryChanged(newQuery)
+            }
+            Row(modifier = Modifier.padding(8.dp)) {
+                CategoryList(
+                    categories = categories,
+                    selectedCategory = selectedCategory,
+                    onCategorySelected = { category ->
+                        viewModel.onCategorySelected(category)
+                    },
+                    modifier = Modifier.weight(0.3f)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                MenuItemList(
+                    menuItems = filteredMenuItems, onAvailabilityChanged = { item, isAvailable ->
+                        viewModel.onAvailabilityChanged(item, isAvailable)
+                    }, modifier = Modifier.weight(0.7f)
+                )
+            }
         }
     }
-
 }
 
 @Composable
@@ -106,7 +112,7 @@ fun CategoryList(
         items(categories) { category ->
             CategoryItem(
                 category = category,
-                isSelected = category.categoryId == selectedCategory?.categoryId,
+                isSelected = category.id == selectedCategory?.id,
                 onCategorySelected = { onCategorySelected(category) })
         }
     }
@@ -125,7 +131,7 @@ fun CategoryItem(
             .clickable(onClick = onCategorySelected), contentAlignment = Alignment.Center
     ) {
         Text(
-            text = category.categoryName,
+            text = category.name,
             color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
             textAlign = TextAlign.Center
         )
@@ -168,7 +174,7 @@ fun MenuItemCard(
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Column {
-                Text(item.name, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Text(item.name, fontWeight = FontWeight.Medium, fontSize = 16.sp)
                 Text(
                     "IDR ${item.price}",
                     color = MaterialTheme.colorScheme.onSurfaceVariant,

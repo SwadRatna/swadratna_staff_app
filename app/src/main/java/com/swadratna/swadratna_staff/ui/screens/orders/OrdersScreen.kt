@@ -10,6 +10,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.swadratna.swadratna_staff.ui.components.SwipeRefreshContainer
+import com.swadratna.swadratna_staff.data.remote.model.Order
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -21,34 +26,27 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-data class Order(
-    val orderNumber: String,
-    val customerName: String,
-    val items: List<String>,
-    val status: String
-)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun OrdersScreen() {
-    val orders = listOf(
-        Order("#1001", "Allan Johnson", listOf("Spaghetti bolognese", "Water"), "New"),
-        Order("#1002", "Bob Williams", listOf("Chicken Burger", "Coca-cola"), "New"),
-        Order("#1003", "Charlie Brown", listOf("Veggie Burger", "French Fries", "Water"), "In Progress"),
-        Order("#1004", "Diana Prince", listOf("Pizza Margherita", "Sprite"), "In Progress"),
-        Order("#1005", "Harry Eagle", listOf("Tuna Pizza", "Fanta Orange", "Water"), "Completed")
-    )
+fun OrdersScreen(viewModel: OrdersViewModel = hiltViewModel()) {
+    val orders by viewModel.orders.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
 
-
-    Column(modifier = Modifier) {
-        SearchBar()
-        FilterButtons()
-        LazyColumn(
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            items(orders) { order ->
-                OrderCard(order = order)
+    SwipeRefreshContainer(
+        isRefreshing = isLoading,
+        onRefresh = { viewModel.fetchOrders() }
+    ) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            SearchBar()
+            FilterButtons()
+            LazyColumn(
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                items(orders) { order ->
+                    OrderCard(order = order)
+                }
             }
         }
     }
