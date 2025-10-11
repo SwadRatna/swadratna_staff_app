@@ -1,5 +1,9 @@
 package com.swadratna.swadratna_staff.ui.screens.login
 
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
@@ -32,7 +36,10 @@ fun LoginScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(title = { Text("Login") })
+            TopAppBar(
+                title = { Text("Login") },
+                windowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top)
+            )
         }
     ) {
         Column(

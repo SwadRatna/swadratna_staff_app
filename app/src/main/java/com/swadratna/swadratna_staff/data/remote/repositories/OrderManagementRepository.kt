@@ -10,8 +10,10 @@ import com.swadratna.swadratna_staff.data.remote.model.OccupyTableRequest
 import com.swadratna.swadratna_staff.data.remote.model.OccupyTableResponse
 import com.swadratna.swadratna_staff.data.remote.model.OrderDetailsX
 import com.swadratna.swadratna_staff.data.remote.model.TableListResponse
+import com.swadratna.swadratna_staff.data.remote.model.BillDetail
 import com.swadratna.swadratna_staff.data.remote.services.ApiService
 import com.swadratna.swadratna_staff.data.remote.services.ApproveBillResponse
+import com.swadratna.swadratna_staff.data.remote.services.BillActionRequest
 import retrofit2.HttpException
 import java.io.IOException
 import javax.inject.Inject
@@ -119,9 +121,10 @@ class OrderManagementRepository @Inject constructor(
         }
     }
 
-    suspend fun approveBill(orderId: String): Result<ApproveBillResponse> {
+    suspend fun approveBill(approvalAction: String , reason: String, orderId: Int): Result<ApproveBillResponse> {
         return try {
-            val response = apiService.approveBill(orderId)
+            val request = BillActionRequest(action = approvalAction , reason)
+            val response = apiService.updateBillStatus(orderId, request)
             if (response.isSuccessful) {
                 response.body()?.let {
                     Result.success(it)
@@ -143,6 +146,21 @@ class OrderManagementRepository @Inject constructor(
                 } ?: Result.failure(Exception("Order details not found"))
             } else {
                 Result.failure(Exception("Failed to fetch order details: ${response.message()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getBillDetails(orderId: String): Result<BillDetail> {
+        return try {
+            val response = apiService.getBillDetails("ikekk23nnjk3km33", orderId)
+            if (response.isSuccessful) {
+                response.body()?.let {
+                    Result.success(it)
+                } ?: Result.failure(Exception("Bill details not found"))
+            } else {
+                Result.failure(Exception("Failed to fetch bill details: ${response.message()}"))
             }
         } catch (e: Exception) {
             Result.failure(e)

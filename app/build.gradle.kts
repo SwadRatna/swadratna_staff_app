@@ -63,6 +63,7 @@ dependencies {
     
     // Hilt
     implementation(libs.hilt.android)
+    implementation(libs.androidx.compose.foundation.layout)
     kapt(libs.hilt.compiler)
     implementation(libs.hilt.navigation.compose)
     compileOnly("javax.inject:javax.inject:1")

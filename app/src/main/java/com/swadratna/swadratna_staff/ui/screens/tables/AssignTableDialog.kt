@@ -84,10 +84,16 @@ fun AssignTableDialog(
                             }
 
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround) {
-                                Button(onClick = { onTableOccupied(orderId.toString()); onDismiss() }) {
+                                Button(onClick = {
+                                    resetTableOccupancyLocalData(orderManagementViewModel)
+                                    onTableOccupied(orderId.toString());
+                                    onDismiss()
+                                }) {
                                     Text("Go to Order")
                                 }
-                                Button(onClick = { onDismiss() }) {
+                                Button(onClick = {
+                                    resetTableOccupancyLocalData(orderManagementViewModel)
+                                    onDismiss() }) {
                                     Text("Done")
                                 }
                             }
@@ -150,6 +156,11 @@ fun AssignTableDialog(
             }
         }
     }
+}
+
+fun resetTableOccupancyLocalData(orderManagementViewModel: OrderManagementViewModel) {
+    orderManagementViewModel.resetCustomerState()
+    orderManagementViewModel.resetOccupyTableState()
 }
 
 @Composable

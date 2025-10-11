@@ -2,7 +2,6 @@ package com.swadratna.swadratna_staff.navigation
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
@@ -15,7 +14,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
@@ -33,6 +31,7 @@ import com.swadratna.swadratna_staff.R
 
 
 import com.swadratna.swadratna_staff.ui.screens.login.LoginScreen
+import com.swadratna.swadratna_staff.ui.screens.orders.PayBillScreen
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -60,22 +59,22 @@ fun NavigationComponent(
             if (shouldShowBottomBar) {
                 TopAppBar(
                     title = {
-                        Text(text = currentScreen?.title ?: stringResource(R.string.app_name))
+                        Text(text = stringResource(R.string.company_name))
                     }, actions = {
                         IconButton(
                             onClick = { /* Handle profile click */ },
                             modifier = Modifier
-                                .background(MaterialTheme.colorScheme.background, CircleShape)
+                                .background(MaterialTheme.colorScheme.primary, CircleShape)
                         ) {
                             Icon(
                                 Icons.Default.Person,
                                 contentDescription = "Profile",
-                                tint = MaterialTheme.colorScheme.primary
+                                tint = MaterialTheme.colorScheme.surface
                             )
                         }
                     }, colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        titleContentColor = MaterialTheme.colorScheme.surface
+                        containerColor = MaterialTheme.colorScheme.background.copy(0.6f),
+                        titleContentColor = MaterialTheme.colorScheme.onBackground
                     )
                 )
             }
@@ -119,12 +118,7 @@ fun NavigationComponent(
                     }
                 })
             }
-            composable(
-                route = "${NavigationRoute.Orders.route}/{orderId}",
-                arguments = listOf(navArgument("orderId") { type = NavType.StringType })) { backStackEntry ->
-                val orderId = backStackEntry.arguments?.getString("orderId")
-                OrdersScreen(navController = navController, orderID = orderId)
-            }
+
             composable(route = NavigationRoute.Tables.route) {
                 TablesScreen(navController)
             }
@@ -147,6 +141,12 @@ fun NavigationComponent(
                     onBack = { navController.popBackStack() },
                     navController = navController)
             }
+            composable(
+                route = "${NavigationRoute.Bill.route}/{orderId}",
+                arguments = listOf(navArgument("orderId") { type = NavType.StringType })) { backStackEntry ->
+                val orderId = backStackEntry.arguments?.getString("orderId")
+                PayBillScreen(navController = navController, orderId = orderId)
+            }
         }
     }
 }
@@ -160,4 +160,12 @@ sealed class NavigationRoute(val route: String, val title: String, val icon: Ima
     object Inventory : NavigationRoute("inventory", "Inventory", Icons.Default.ShoppingCart)
     object Profile : NavigationRoute("profile", "Profile", Icons.Default.Person)
     object OrderTaking : NavigationRoute("order_taking", "Order Taking", Icons.Default.List)
+
+    object AllOrderScreen : NavigationRoute("order_taking", "Order Taking", Icons.Default.List)
+
+    object OrderMenuScreen : NavigationRoute("order_taking", "Order Taking", Icons.Default.List)
+
+    object Bill : NavigationRoute("bill", "Bill", Icons.Default.List) {
+        fun createRoute(orderId: String) = "bill/$orderId"
+    }
 }

@@ -3,6 +3,7 @@ package com.swadratna.swadratna_staff.ui.screens.tables
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -12,6 +13,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -22,6 +24,11 @@ import com.swadratna.swadratna_staff.ui.screens.orders.OrderManagementViewModel
 import com.swadratna.swadratna_staff.ui.screens.orders.TableListState
 import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.swadratna.swadratna_staff.ui.components.SwipeRefreshContainer
+import com.swadratna.swadratna_staff.ui.theme.Orange80
+import com.swadratna.swadratna_staff.ui.theme.Red40
+import com.swadratna.swadratna_staff.ui.theme.Red80
+import com.swadratna.swadratna_staff.ui.theme.RedGrey20
+import com.swadratna.swadratna_staff.ui.theme.RedGrey80
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -104,24 +111,26 @@ fun TableCard(table: Table, onClick: () -> Unit) {
             .height(100.dp)
             .clickable(onClick = onClick)
     ) {
-        Box(
+        Column (
             modifier = Modifier
                 .fillMaxSize()
-                .background(if (table.is_occupied) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant),
-            contentAlignment = Alignment.Center
+                .background(if (table.is_occupied) Red80 else MaterialTheme.colorScheme.surfaceVariant)
+                .padding(8.dp),
+            verticalArrangement = if(table.is_occupied) Arrangement.SpaceAround else Arrangement.Top
         ) {
+            Text(
+                text = "${table.table_id}.",
+                color = MaterialTheme.colorScheme.onSurface,
+                fontSize = 16.sp
+            )
             if (table.is_occupied) {
                 Text(
-                    text = "${table.table_id} ${table.occupancy.user_name}",
+                    text = "${table.occupancy.user_name}",
                     color = MaterialTheme.colorScheme.onPrimary,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp
-                )
-            } else {
-                Text(
-                    text = "${table.table_id}.",
-                    color = MaterialTheme.colorScheme.onSurface,
-                    fontSize = 16.sp
+                    fontWeight = FontWeight.Normal,
+                    fontSize = 24.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         }

@@ -13,6 +13,8 @@ import com.swadratna.swadratna_staff.data.remote.model.OccupyTableRequest
 import com.swadratna.swadratna_staff.data.remote.model.OccupyTableResponse
 import com.swadratna.swadratna_staff.data.remote.model.TableListResponse
 import com.swadratna.swadratna_staff.data.remote.repositories.OrderManagementRepository
+import com.swadratna.swadratna_staff.data.remote.model.OrderDetailsX
+import com.swadratna.swadratna_staff.data.remote.model.BillDetail
 
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -50,6 +52,20 @@ sealed class OrderConfirmationState {
     object Loading : OrderConfirmationState()
     object Success : OrderConfirmationState()
     data class Error(val message: String) : OrderConfirmationState()
+}
+
+sealed class OrderDetailsXState {
+    object Loading : OrderDetailsXState()
+    data class Success(val order: OrderDetailsX) : OrderDetailsXState()
+    data class Error(val message: String) : OrderDetailsXState()
+    object Idle : OrderDetailsXState()
+}
+
+sealed class BillDetailsState {
+    object Loading : BillDetailsState()
+    data class Success(val billDetail: BillDetail) : BillDetailsState()
+    data class Error(val message: String) : BillDetailsState()
+    object Idle : BillDetailsState()
 }
 
 @HiltViewModel
@@ -90,6 +106,15 @@ class OrderManagementViewModel @Inject constructor(
 
     private val _orderConfirmationState = MutableStateFlow<OrderConfirmationState>(OrderConfirmationState.Idle)
     val orderConfirmationState: StateFlow<OrderConfirmationState> = _orderConfirmationState
+
+    private val _detailedOrderState = MutableStateFlow<OrderDetailsXState>(OrderDetailsXState.Idle)
+    val detailedOrderState: StateFlow<OrderDetailsXState> = _detailedOrderState.asStateFlow()
+
+    private val _billDetailsState = MutableStateFlow<BillDetailsState>(BillDetailsState.Idle)
+    val billDetailsState: StateFlow<BillDetailsState> = _billDetailsState.asStateFlow()
+
+    private val _staffRole = MutableStateFlow<String?>(null)
+    val staffRole: StateFlow<String?> = _staffRole.asStateFlow()
 
     fun getOrCreateCustomer(mobile: String?, userName: String?) {
         viewModelScope.launch {
@@ -168,6 +193,7 @@ class OrderManagementViewModel @Inject constructor(
                 }
             }
         }
+        fetchStaffRole() // Call fetchStaffRole here
     }
 
     fun getTables(locationId: Int) {
@@ -223,15 +249,53 @@ class OrderManagementViewModel @Inject constructor(
         }
     }
 
+    fun getOrderDetail(orderID: String) {
+        viewModelScope.launch {
+            _detailedOrderState.value = OrderDetailsXState.Loading
+            repository.getOrderDetail(orderID)
+                .onSuccess {
+                    _detailedOrderState.value = OrderDetailsXState.Success(it)
+                }
+                .onFailure {
+                    _detailedOrderState.value = OrderDetailsXState.Error(it.message ?: "Unknown error fetching order details")
+                }
+        }
+    }
 
-//    fun approveBill(orderId: String) {
-//        viewModelScope.launch {
-//            _loading.value = true
-//            _error.value = null
-//            repository.approveBill(orderId)
-//                .onSuccess { /* Handle success, maybe clear current bill or refresh tables */ }
-//                .onFailure { _error.value = it.message }
-//            _loading.value = false
-//        }
-//    }
+    fun resetDetailedOrderState() {
+        _detailedOrderState.value = OrderDetailsXState.Idle
+    }
+
+    fun getBillDetails(orderId: String) {
+        viewModelScope.launch {
+            _billDetailsState.value = BillDetailsState.Loading
+            repository.getBillDetails(orderId)
+                .onSuccess {
+                    _billDetailsState.value = BillDetailsState.Success(it)
+                }
+                .onFailure {
+                    _billDetailsState.value = BillDetailsState.Error(it.message ?: "Unknown error fetching bill details")
+                }
+        }
+    }
+
+    fun fetchStaffRole() {
+        viewModelScope.launch {
+            staffUserDao.getLoggedInStaffUser().collect { staffUser ->
+                _staffRole.value = staffUser?.role
+            }
+        }
+    }
+
+
+    fun approveBill(approvalAction: String, reason: String, billId: Int) {
+        viewModelScope.launch {
+            _loading.value = true
+            _error.value = null
+            repository.approveBill(approvalAction , reason , billId)
+                .onSuccess { /* Handle success, maybe clear current bill or refresh tables */ }
+                .onFailure { _error.value = it.message }
+            _loading.value = false
+        }
+    }
 }

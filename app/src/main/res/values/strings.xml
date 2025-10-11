@@ -1,3 +1,4 @@
 <resources>
-    <string name="app_name">SwadRatna_Staff</string>
+    <string name="app_name">SwadRatna Staff</string>
+    <string name="company_name">SwadRatna</string>
 </resources>

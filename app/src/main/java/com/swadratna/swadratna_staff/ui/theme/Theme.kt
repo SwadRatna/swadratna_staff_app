@@ -62,7 +62,7 @@ fun SwadRatna_StaffTheme(
         WindowCompat.setDecorFitsSystemWindows(window, false)
         window.statusBarColor = Color.Transparent.toArgb()
         window.navigationBarColor = Color.Transparent.toArgb()
-        WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = darkTheme
+        WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !darkTheme
     }
 
     MaterialTheme(

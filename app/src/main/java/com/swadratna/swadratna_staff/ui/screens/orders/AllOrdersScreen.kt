@@ -1,36 +1,58 @@
 package com.swadratna.swadratna_staff.ui.screens.orders
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Divider
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.surfaceColorAtElevation
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
-import androidx.room.util.TableInfo
 import com.swadratna.swadratna_staff.data.remote.model.KotX
 import com.swadratna.swadratna_staff.data.remote.model.OrderDetailsX
 import com.swadratna.swadratna_staff.data.remote.model.OrderXX
+import com.swadratna.swadratna_staff.navigation.NavigationRoute
 
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun OrdersScreen(
+    modifier: Modifier = Modifier,
     navController: NavController,
     orderID: String?,
-    viewModel: OrdersViewModel = hiltViewModel()
+    viewModel: OrderManagementViewModel
 ) {
     val orderDetailsXState by viewModel.detailedOrderState.collectAsStateWithLifecycle()
 
@@ -40,28 +62,32 @@ fun OrdersScreen(
         }
     }
 
+    val userHaveOrders = remember(orderDetailsXState) {
+        if (orderDetailsXState is OrderDetailsXState.Success) {
+            val orderDetails = (orderDetailsXState as OrderDetailsXState.Success).order
+            orderDetails.kots?.isNotEmpty() == true
+        } else {
+            false
+        }
+    }
+
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Order Details") },
-                navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Go back")
-                    }
-                }
-            )
-        },
         bottomBar = {
-            if (orderDetailsXState is OrderDetailsXState.Success) {
+            if (userHaveOrders) {
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
+                    modifier = modifier
                         .background(MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp))
                         .padding(16.dp),
                     horizontalArrangement = Arrangement.Center
                 ) {
                     Button(
-                        onClick = { /* TODO: Implement Generate Bill logic */ },
+                        onClick = {
+                            navController.navigate(
+                                NavigationRoute.Bill.createRoute(
+                                    orderID ?: ""
+                                )
+                            )
+                        },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(50.dp)
@@ -74,16 +100,30 @@ fun OrdersScreen(
     ) { paddingValues ->
         when (orderDetailsXState) {
             is OrderDetailsXState.Loading -> {
-                Box(modifier = Modifier.fillMaxSize().padding(paddingValues), contentAlignment = Alignment.Center) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues),
+                    contentAlignment = Alignment.Center
+                ) {
                     CircularProgressIndicator()
                 }
             }
+
             is OrderDetailsXState.Success -> {
                 val orderDetails = (orderDetailsXState as OrderDetailsXState.Success).order
-                SuccessLayout(orderDetails, paddingValues)
+                SuccessLayout(userHaveOrders,orderDetails, Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues))
             }
+
             is OrderDetailsXState.Error -> {
-                Box(modifier = Modifier.fillMaxSize().padding(paddingValues), contentAlignment = Alignment.Center) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues),
+                    contentAlignment = Alignment.Center
+                ) {
                     Text(
                         text = "Error: ${(orderDetailsXState as OrderDetailsXState.Error).message}",
                         color = MaterialTheme.colorScheme.error,
@@ -91,8 +131,14 @@ fun OrdersScreen(
                     )
                 }
             }
+
             OrderDetailsXState.Idle -> {
-                Box(modifier = Modifier.fillMaxSize().padding(paddingValues), contentAlignment = Alignment.Center) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues),
+                    contentAlignment = Alignment.Center
+                ) {
                     Text(text = "Loading order details...")
                 }
             }
@@ -100,35 +146,48 @@ fun OrdersScreen(
     }
 }
 
-// ---------------------------------------------------------------------------------------------
 
 @Composable
-fun SuccessLayout(orderDetails: OrderDetailsX, paddingValues: PaddingValues) {
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(paddingValues),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        // 1. ORDER SUMMARY CARD
-        item {
-            OrderSummaryCard(orderDetails.order)
+fun SuccessLayout(userHaveOrders :Boolean, orderDetails: OrderDetailsX, modifier: Modifier) {
+    if (userHaveOrders) {
+        LazyColumn(
+            modifier = modifier,
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            // 1. ORDER SUMMARY CARD
+            item {
+                OrderSummaryCard(orderDetails.order)
+            }
+
+            // 2. KOT LIST HEADING
+            item {
+                Text(
+                    text = "Kitchen Orders (KOTs)",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+            }
+
+            items(orderDetails.kots) { kot ->
+                KotCard(kot)
+            }
+
         }
 
-        // 2. KOT LIST HEADING
-        item {
+    } else {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp) ,
+            contentAlignment = Alignment.Center
+        ) {
             Text(
-                text = "Kitchen Orders (KOTs)",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(top = 8.dp)
+                text = "You haven't ordered yet. Please order to see your Orders.",
+                textAlign = TextAlign.Center,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onBackground
             )
-        }
-
-        // 3. KOT ITEMS
-        items(orderDetails.kots) { kot ->
-            KotCard(kot)
         }
     }
 }
@@ -139,6 +198,7 @@ fun SuccessLayout(orderDetails: OrderDetailsX, paddingValues: PaddingValues) {
 fun OrderSummaryCard(order: OrderXX) {
     Card(
         modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(MaterialTheme.colorScheme.surface)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             // Order ID
@@ -181,6 +241,7 @@ fun OrderSummaryCard(order: OrderXX) {
 fun KotCard(kot: KotX) {
     Card(
         modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -207,10 +268,12 @@ fun KotCard(kot: KotX) {
             // KOT Items List
             kot.items.forEach { kotItem ->
 
-                Row(modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(4.dp),
-                    verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth(0.8f)

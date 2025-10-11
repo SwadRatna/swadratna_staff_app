@@ -21,6 +21,13 @@ import com.swadratna.swadratna_staff.data.remote.model.KotRequest
 import com.swadratna.swadratna_staff.data.remote.model.KotResponse
 
 import com.swadratna.swadratna_staff.data.remote.model.OrderDetailsX
+import com.swadratna.swadratna_staff.data.remote.model.BillDetail
+
+data class BillActionRequest(
+    val action: String,
+    val reason: String
+)
+
 
 interface ApiService {
 
@@ -53,8 +60,12 @@ interface ApiService {
     @GET("findBill")
     suspend fun findBill(@Query("orderId") orderId: String): Response<CustomerBill>
 
-    @PATCH("approveBill/{orderId}")
-    suspend fun approveBill(@Path("orderId") orderId: String): Response<ApproveBillResponse>
+
+    @PATCH("api/v1/staff/approveBill/{billId}")
+    suspend fun updateBillStatus(
+        @Path("billId") billId: Int,
+        @Body request: BillActionRequest
+    ): Response<ApproveBillResponse>
 
     @PATCH("menuItemAvailability/{locationId}/{menuId}")
     suspend fun updateMenuItemAvailability(
@@ -65,4 +76,7 @@ interface ApiService {
 
     @GET("/api/v1/staff/orders/detail/{orderID}")
     suspend fun getOrderDetail(@Path("orderID") orderID: String): Response<OrderDetailsX>
+
+    @GET("/api/v1/staff/bill")
+    suspend fun getBillDetails(@Header("X-Key") xKey: String, @Query("orderId") orderId: String): Response<BillDetail>
 }
