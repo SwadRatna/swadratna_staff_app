@@ -2,6 +2,7 @@ package com.swadratna.swadratna_staff.ui.screens.inventory
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.swadratna.swadratna_staff.data.local.dao.StaffUserDao
 import com.swadratna.swadratna_staff.data.remote.model.Category
 import com.swadratna.swadratna_staff.data.remote.model.MenuItem
 import com.swadratna.swadratna_staff.data.remote.repositories.ApiResult
@@ -13,7 +14,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class InventoryViewModel @Inject constructor(
-    private val repository: InventoryManagementRepository
+    private val repository: InventoryManagementRepository,
+    private val staffUserDao: StaffUserDao
 ) : ViewModel() {
 
     private val _loading = MutableStateFlow(false)
@@ -51,11 +53,23 @@ class InventoryViewModel @Inject constructor(
         SharingStarted.WhileSubscribed(5000),
         emptyList()
     )
+    val staffLocationId: StateFlow<Int?> = staffUserDao.getLoggedInStaffUser()
+        .map { staffUser -> staffUser?.location?.id }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = null
+        )
 
-    private val LOCATION_ID = 1 // Placeholder for location ID
 
     init {
-        getMenuItems(LOCATION_ID)
+        viewModelScope.launch {
+            staffLocationId.collect { locationId ->
+                locationId?.let {
+                    getMenuItems(locationId)
+                }
+            }
+        }
     }
 
     fun getMenuItems(locationId: Int, searchQuery: String? = null) {
@@ -84,12 +98,19 @@ class InventoryViewModel @Inject constructor(
 
     fun onSearchQueryChanged(query: String) {
         _searchQuery.value = query
-        getMenuItems(LOCATION_ID, query)
+        viewModelScope.launch {
+            staffLocationId.collect { locationId ->
+                locationId?.let {
+                    getMenuItems(locationId, query)
+                }
+            }
+        }
+        _searchQuery.value = query
     }
 
     fun onAvailabilityChanged(menuItem: MenuItem, isAvailable: Boolean) {
         viewModelScope.launch {
-            when (val result = repository.updateMenuItemAvailability(LOCATION_ID, menuItem.id, isAvailable)) {
+            when (val result = repository.updateMenuItemAvailability(staffLocationId.value!!, menuItem.id, isAvailable)) {
                 is ApiResult.Success -> {
                     // Update local state if API call is successful
                     _menuItems.update { currentItems ->

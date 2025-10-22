@@ -1,15 +1,18 @@
 package com.swadratna.swadratna_staff.ui.screens.orders
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBox
 import androidx.compose.material.icons.filled.ArrowBack
@@ -42,7 +45,9 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.swadratna.swadratna_staff.navigation.NavigationRoute
+import com.swadratna.swadratna_staff.ui.components.NavButton
 import com.swadratna.swadratna_staff.ui.theme.RedGrey20
+import kotlin.math.absoluteValue
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -55,7 +60,7 @@ fun OrderTakingScreen(
 ) {
     val categories by viewModel.categories.collectAsState()
     var selectedCategoryId by remember { mutableStateOf<Int?>(null) }
-    var selectedTab by rememberSaveable { mutableStateOf(0) }
+    var selectedTab by remember { mutableStateOf(0) }
 
     LaunchedEffect(Unit) {
         viewModel.getMenuItems("")
@@ -63,7 +68,7 @@ fun OrderTakingScreen(
 
     LaunchedEffect(categories) {
         if (selectedCategoryId == null && categories.isNotEmpty()) {
-            selectedCategoryId = categories.first().id // Use category.id
+            selectedCategoryId = categories.first().id
         }
     }
 
@@ -90,20 +95,6 @@ fun OrderTakingScreen(
                         Icon(Icons.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
-                actions = {
-                    OutlinedButton(
-                        onClick = { navController.navigate(NavigationRoute.Bill.createRoute(orderId)) },
-                        modifier = Modifier.padding(end = 8.dp)
-                    ) {
-                        Icon(
-                            Icons.Outlined.Menu,
-                            contentDescription = "Bill",
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("View Bill", fontSize = 14.sp)
-                    }
-                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface,
                     titleContentColor = MaterialTheme.colorScheme.onSurface
@@ -115,35 +106,31 @@ fun OrderTakingScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.surface),
-                horizontalArrangement = Arrangement.SpaceEvenly,
+                    .background(MaterialTheme.colorScheme.surface).padding(10.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Button(
+                // Button 1: Menu
+                NavButton(
+                    label = "Menu",
+                    icon = Icons.Filled.Menu,
+                    isSelected = selectedTab == 0,
                     onClick = {
                         selectedTab = 0
-                    },
-                    colors = if (selectedTab == 0) ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary) else ButtonDefaults.buttonColors(containerColor = RedGrey20),
+                              },
+                    unselectedContainerColor = RedGrey20,
                     modifier = Modifier.weight(1f)
-                ) {
-                    Row (verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Filled.Menu, contentDescription = "Menu")
-                        Text("Menu")
-                    }
-                }
+                )
 
-                Button(
-                    onClick = {
-                        selectedTab = 1
-                    },
-                    colors = if (selectedTab == 1) ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary ) else ButtonDefaults.buttonColors(containerColor = RedGrey20),
+                // Button 2: Orders
+                NavButton(
+                    label = "Orders",
+                    icon = Icons.Filled.AccountBox,
+                    isSelected = selectedTab == 1,
+                    onClick = { selectedTab = 1 },
+                    unselectedContainerColor = RedGrey20,
                     modifier = Modifier.weight(1f)
-                ) {
-                    Row (verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Filled.AccountBox, contentDescription = "Orders")
-                        Text("Orders")
-                    }
-                }
+                )
             }
         },
         containerColor = MaterialTheme.colorScheme.background

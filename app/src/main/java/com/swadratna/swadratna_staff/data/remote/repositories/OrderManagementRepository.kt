@@ -1,5 +1,6 @@
 package com.swadratna.swadratna_staff.data.remote.repositories
 
+import com.swadratna.swadratna_staff.data.remote.model.AllOrdersResponse
 import com.swadratna.swadratna_staff.data.remote.model.Customer
 import com.swadratna.swadratna_staff.data.remote.model.CustomerBill
 import com.swadratna.swadratna_staff.data.remote.model.KotRequest
@@ -161,6 +162,21 @@ class OrderManagementRepository @Inject constructor(
                 } ?: Result.failure(Exception("Bill details not found"))
             } else {
                 Result.failure(Exception("Failed to fetch bill details: ${response.message()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getAllOrders(locationId: Int, page: Int, limit: Int): Result<AllOrdersResponse> {
+        return try {
+            val response = apiService.getAllOrders(locationId, page, limit)
+            if (response.isSuccessful) {
+                response.body()?.let {
+                    Result.success(it)
+                } ?: Result.failure(Exception("No orders found"))
+            } else {
+                Result.failure(Exception("Failed to fetch all orders: ${response.message()}"))
             }
         } catch (e: Exception) {
             Result.failure(e)

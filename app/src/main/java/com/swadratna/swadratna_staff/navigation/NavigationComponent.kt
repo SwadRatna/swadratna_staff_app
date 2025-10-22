@@ -1,6 +1,7 @@
 package com.swadratna.swadratna_staff.navigation
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -12,6 +13,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -28,10 +30,10 @@ import com.swadratna.swadratna_staff.ui.screens.orders.OrderTakingScreen
 import com.swadratna.swadratna_staff.ui.screens.orders.OrdersScreen
 import com.swadratna.swadratna_staff.ui.screens.tables.TablesScreen
 import com.swadratna.swadratna_staff.R
-
-
+import com.swadratna.swadratna_staff.ui.orderDashboard.OrderDashboard
 import com.swadratna.swadratna_staff.ui.screens.login.LoginScreen
 import com.swadratna.swadratna_staff.ui.screens.orders.PayBillScreen
+import com.swadratna.swadratna_staff.ui.screens.profile.StaffProfileScreen
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -62,7 +64,9 @@ fun NavigationComponent(
                         Text(text = stringResource(R.string.company_name))
                     }, actions = {
                         IconButton(
-                            onClick = { /* Handle profile click */ },
+                            onClick = {
+                            navController.navigate(NavigationRoute.Profile.route)
+                            },
                             modifier = Modifier
                                 .background(MaterialTheme.colorScheme.primary, CircleShape)
                         ) {
@@ -81,7 +85,7 @@ fun NavigationComponent(
         },
         bottomBar = {
             if (shouldShowBottomBar) {
-                NavigationBar {
+                NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
                     val navBackStackEntry by navController.currentBackStackEntryAsState()
                     val currentDestination = navBackStackEntry?.destination
                     items.forEach { screen ->
@@ -97,7 +101,14 @@ fun NavigationComponent(
                                     launchSingleTop = true
                                     restoreState = true
                                 }
-                            })
+                            },
+                            colors = NavigationBarItemDefaults.colors(
+                                selectedTextColor = MaterialTheme.colorScheme.primary,
+                                unselectedTextColor = Color.Gray,
+                                selectedIconColor = MaterialTheme.colorScheme.primary,
+                                unselectedIconColor = Color.Gray
+                            )
+                        )
                     }
                 }
             }
@@ -125,8 +136,11 @@ fun NavigationComponent(
             composable(route = NavigationRoute.Inventory.route) {
                 InventoryScreen()
             }
+            composable(route = NavigationRoute.Orders.route) {
+                OrderDashboard(Modifier.fillMaxSize())
+            }
             composable(route = NavigationRoute.Profile.route) {
-                // Add Profile screen when ready
+                StaffProfileScreen()
             }
             composable(
                 route = "${NavigationRoute.OrderTaking.route}/{tableNumber}/{orderId}",

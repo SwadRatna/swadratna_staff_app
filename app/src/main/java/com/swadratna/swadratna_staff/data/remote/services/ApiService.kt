@@ -1,5 +1,6 @@
 package com.swadratna.swadratna_staff.data.remote.services
 
+import com.swadratna.swadratna_staff.data.remote.model.AllOrdersResponse
 import com.swadratna.swadratna_staff.data.remote.model.CustomerBill
 import com.swadratna.swadratna_staff.data.remote.model.CustomerResponse
 import com.swadratna.swadratna_staff.data.remote.model.MenuResponse
@@ -79,4 +80,11 @@ interface ApiService {
 
     @GET("/api/v1/staff/bill")
     suspend fun getBillDetails(@Header("X-Key") xKey: String, @Query("orderId") orderId: String): Response<BillDetail>
+
+    @GET("/api/v1/staff/orders/{locationId}")
+    suspend fun getAllOrders(
+        @Path("locationId") locationId: Int,
+        @Query("page") page: Int,
+        @Query("limit") limit: Int
+    ): Response<AllOrdersResponse>
 }

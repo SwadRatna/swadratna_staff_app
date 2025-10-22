@@ -12,7 +12,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -22,14 +21,8 @@ import com.swadratna.swadratna_staff.data.remote.model.Table
 import com.swadratna.swadratna_staff.navigation.NavigationRoute
 import com.swadratna.swadratna_staff.ui.screens.orders.OrderManagementViewModel
 import com.swadratna.swadratna_staff.ui.screens.orders.TableListState
-import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.swadratna.swadratna_staff.ui.components.SwipeRefreshContainer
-import com.swadratna.swadratna_staff.ui.theme.Orange80
-import com.swadratna.swadratna_staff.ui.theme.Red40
 import com.swadratna.swadratna_staff.ui.theme.Red80
-import com.swadratna.swadratna_staff.ui.theme.RedGrey20
-import com.swadratna.swadratna_staff.ui.theme.RedGrey80
-
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -58,7 +51,6 @@ fun TablesScreen(navController: NavController,
 
             when (tableListState) {
                 is TableListState.Loading -> {
-                    // Only show loading indicator if not refreshing
                     if (!isRefreshing) {
                         CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
                     }
@@ -69,20 +61,21 @@ fun TablesScreen(navController: NavController,
                 is TableListState.Success -> {
                     val tables = (tableListState as TableListState.Success).tables.tables // Access the list of tables
                     LazyVerticalGrid(
-                        columns = GridCells.Fixed(2),
+                        columns = GridCells.Fixed(3),
                         verticalArrangement = Arrangement.spacedBy(16.dp),
                         horizontalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        items(tables) { table ->
+                        items(tables, key = {it.table_id}) { table ->
                             TableCard(
-                                table = table, onClick = {
-                                    if (!table.is_occupied) {
-                                        selectedTable = table
+                                table = table, onClick = { clickedTable ->
+                                    if (!clickedTable.is_occupied) {
+                                        selectedTable = clickedTable
                                         showDialog = true
                                     } else {
-                                        navController.navigate("${NavigationRoute.OrderTaking.route}/${table.id}/${table.occupancy.order_id}")
+                                        navController.navigate("${NavigationRoute.OrderTaking.route}/${clickedTable.id}/${clickedTable.occupancy.order_id}")
                                     }
-                                })
+                                }
+                            )
                         }
                     }
                 }
@@ -103,18 +96,18 @@ fun TablesScreen(navController: NavController,
 }
 
 @Composable
-fun TableCard(table: Table, onClick: () -> Unit) {
+fun TableCard(table: Table, onClick: (Table) -> Unit) {
     Card(
         shape = RoundedCornerShape(8.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
         modifier = Modifier
             .height(100.dp)
-            .clickable(onClick = onClick)
+            .clickable(onClick = {onClick(table)})
     ) {
         Column (
             modifier = Modifier
                 .fillMaxSize()
-                .background(if (table.is_occupied) Red80 else MaterialTheme.colorScheme.surfaceVariant)
+                .background(if (table.is_occupied) Red80 else MaterialTheme.colorScheme.surface)
                 .padding(8.dp),
             verticalArrangement = if(table.is_occupied) Arrangement.SpaceAround else Arrangement.Top
         ) {
@@ -127,8 +120,7 @@ fun TableCard(table: Table, onClick: () -> Unit) {
                 Text(
                     text = "${table.occupancy.user_name}",
                     color = MaterialTheme.colorScheme.onPrimary,
-                    fontWeight = FontWeight.Normal,
-                    fontSize = 24.sp,
+                    style = MaterialTheme.typography.bodyLarge,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )

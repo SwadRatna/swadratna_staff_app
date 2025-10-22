@@ -39,6 +39,8 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.swadratna.swadratna_staff.data.remote.model.Category
 import com.swadratna.swadratna_staff.data.remote.model.MenuItem
+import com.swadratna.swadratna_staff.ui.components.CategoryItem
+import com.swadratna.swadratna_staff.ui.components.SearchBar
 import com.swadratna.swadratna_staff.ui.components.SwipeRefreshContainer
 
 
@@ -57,9 +59,15 @@ fun InventoryScreen(viewModel: InventoryViewModel = hiltViewModel()) {
         onRefresh = { viewModel.getMenuItems(1) } // Assuming location ID 1 for now
     ) {
         Column(modifier = Modifier.padding(8.dp)) {
-            SearchBar(searchQuery) { newQuery ->
-                viewModel.onSearchQueryChanged(newQuery)
-            }
+            SearchBar(
+                searchQuery, modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                onQueryChanged = { newQuery ->
+                    viewModel.onSearchQueryChanged(newQuery)
+                }
+            )
+
             Row(modifier = Modifier.padding(8.dp)) {
                 CategoryList(
                     categories = categories,
@@ -81,25 +89,6 @@ fun InventoryScreen(viewModel: InventoryViewModel = hiltViewModel()) {
 }
 
 @Composable
-fun SearchBar(query: String, onQueryChanged: (String) -> Unit) {
-    OutlinedTextField(
-        value = query,
-        onValueChange = onQueryChanged,
-        placeholder = { Text("Search Menu") },
-        leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search Icon") },
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        shape = RoundedCornerShape(8.dp),
-        colors = TextFieldDefaults.colors(
-            focusedContainerColor = MaterialTheme.colorScheme.surface,
-            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-            disabledContainerColor = MaterialTheme.colorScheme.surface,
-        )
-    )
-}
-
-@Composable
 fun CategoryList(
     categories: List<Category>,
     selectedCategory: Category?,
@@ -115,26 +104,6 @@ fun CategoryList(
                 isSelected = category.id == selectedCategory?.id,
                 onCategorySelected = { onCategorySelected(category) })
         }
-    }
-}
-
-@Composable
-fun CategoryItem(
-    category: Category, isSelected: Boolean, onCategorySelected: () -> Unit
-) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(60.dp)
-            .clip(RoundedCornerShape(8.dp))
-            .background(if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface)
-            .clickable(onClick = onCategorySelected), contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = category.name,
-            color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
-            textAlign = TextAlign.Center
-        )
     }
 }
 

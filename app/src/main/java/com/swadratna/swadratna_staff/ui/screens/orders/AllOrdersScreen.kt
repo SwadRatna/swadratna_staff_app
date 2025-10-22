@@ -281,11 +281,11 @@ fun KotCard(kot: KotX) {
                         verticalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
-                            text = "${kotItem.menu_item.name}",
+                            text = "${kotItem?.menu_item?.name}",
                             style = MaterialTheme.typography.bodyLarge
                         )
                         Text(
-                            text = "${kotItem.menu_item.description}",
+                            text = "${kotItem?.menu_item?.description}",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
