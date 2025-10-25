@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.dp
 
 @Composable
 fun SearchBar(
+    hintText: String,
     query: String,
     onQueryChanged: (String) -> Unit,
     modifier: Modifier = Modifier
@@ -25,7 +26,7 @@ fun SearchBar(
         onValueChange = onQueryChanged,
         placeholder = {
             Text(
-                "Search menu items...",
+                hintText,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         },

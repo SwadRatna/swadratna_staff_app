@@ -19,6 +19,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.swadratna.swadratna_staff.R
+import com.swadratna.swadratna_staff.data.local.entities.StaffUser
 import com.swadratna.swadratna_staff.ui.screens.login.LoginViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -27,6 +28,8 @@ fun StaffProfileScreen(
     viewModel: ProfileViewmodel = hiltViewModel()
 ) {
     var showLogoutDialog by remember { mutableStateOf(false) }
+    val staffUser by viewModel.staffUser.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
 
     Column(
         modifier = Modifier
@@ -36,9 +39,24 @@ fun StaffProfileScreen(
             .background(MaterialTheme.colorScheme.background)
     )
     {
-
         // Staff Profile Header
-        StaffProfileHeader()
+        staffUser?.let { user ->
+            StaffProfileHeader(user)
+        } ?: run {
+            // Show loading or placeholder when user data is not available
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(200.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                if (isLoading) {
+                    CircularProgressIndicator()
+                } else {
+                    Text("User profile not available")
+                }
+            }
+        }
 
         Spacer(modifier = Modifier.height(24.dp))
 
@@ -47,22 +65,26 @@ fun StaffProfileScreen(
             ProfileMenuItem(
                 icon = ImageVector.vectorResource(R.drawable.ic_badge),
                 title = "Employee Details",
-                subtitle = "ID, Department, Position"
+                subtitle = "ID, Department, Position",
+                onClick = { /* TODO: Screen not implemented yet */ }
             )
             ProfileMenuItem(
                 icon = ImageVector.vectorResource(R.drawable.ic_schedule),
                 title = "Work Schedule",
-                subtitle = "View your shifts & timings"
+                subtitle = "View your shifts & timings",
+                onClick = { /* TODO: Screen not implemented yet */ }
             )
             ProfileMenuItem(
                 icon = ImageVector.vectorResource(R.drawable.ic_calendar_month),
                 title = "Attendance",
-                subtitle = "Check-in/out history"
+                subtitle = "Check-in/out history",
+                onClick = { /* TODO: Screen not implemented yet */ }
             )
             ProfileMenuItem(
                 icon = Icons.Default.DateRange,
                 title = "Leave Management",
-                subtitle = "Request & track leaves"
+                subtitle = "Request & track leaves",
+                onClick = { /* TODO: Screen not implemented yet */ }
             )
         }
 
@@ -73,17 +95,20 @@ fun StaffProfileScreen(
             ProfileMenuItem(
                 icon = ImageVector.vectorResource(R.drawable.ic_store),
                 title = "Restaurant Details",
-                subtitle = "Branch name & information"
+                subtitle = "Branch name & information",
+                onClick = { /* TODO: Screen not implemented yet */ }
             )
             ProfileMenuItem(
                 icon = Icons.Default.LocationOn,
                 title = "Branch Location",
-                subtitle = "Address & contact details"
+                subtitle = "Address & contact details",
+                onClick = { /* TODO: Screen not implemented yet */ }
             )
             ProfileMenuItem(
                 icon = Icons.Default.Person,
                 title = "Team Directory",
-                subtitle = "View staff & managers"
+                subtitle = "View staff & managers",
+                onClick = { /* TODO: Screen not implemented yet */ }
             )
         }
 
@@ -94,17 +119,20 @@ fun StaffProfileScreen(
             ProfileMenuItem(
                 icon = Icons.Default.Person,
                 title = "Personal Information",
-                subtitle = "Update your profile details"
+                subtitle = "Update your profile details",
+                onClick = { /* TODO: Screen not implemented yet */ }
             )
             ProfileMenuItem(
                 icon = Icons.Default.Lock,
                 title = "Change Password",
-                subtitle = "Update your password"
+                subtitle = "Update your password",
+                onClick = { /* TODO: Screen not implemented yet */ }
             )
             ProfileMenuItem(
                 icon = Icons.Default.Notifications,
                 title = "Notifications",
-                subtitle = "Manage notification preferences"
+                subtitle = "Manage notification preferences",
+                onClick = { /* TODO: Screen not implemented yet */ }
             )
         }
 
@@ -115,17 +143,20 @@ fun StaffProfileScreen(
             ProfileMenuItem(
                 icon = ImageVector.vectorResource(R.drawable.ic_help),
                 title = "Help Center",
-                subtitle = "FAQs & troubleshooting"
+                subtitle = "FAQs & troubleshooting",
+                onClick = { /* TODO: Screen not implemented yet */ }
             )
             ProfileMenuItem(
                 icon = Icons.Default.Phone,
                 title = "Contact Manager",
-                subtitle = "Get in touch with your manager"
+                subtitle = "Get in touch with your manager",
+                onClick = { /* TODO: Screen not implemented yet */ }
             )
             ProfileMenuItem(
                 icon = Icons.Default.Info,
                 title = "About App",
-                subtitle = "Version & app information"
+                subtitle = "Version & app information",
+                onClick = { /* TODO: Screen not implemented yet */ }
             )
         }
 
@@ -199,7 +230,7 @@ fun StaffProfileScreen(
 }
 
 @Composable
-fun StaffProfileHeader() {
+fun StaffProfileHeader(staffUser: StaffUser) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -215,7 +246,8 @@ fun StaffProfileHeader() {
                 .padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Profile Avatar
+            // Profile Avatar - Using initials from username
+            val initials = staffUser.username.take(2).uppercase()
             Box(
                 modifier = Modifier
                     .size(100.dp)
@@ -224,7 +256,7 @@ fun StaffProfileHeader() {
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "SK",
+                    text = initials,
                     style = MaterialTheme.typography.displaySmall,
                     color = MaterialTheme.colorScheme.onPrimary,
                     fontWeight = FontWeight.Bold
@@ -235,7 +267,7 @@ fun StaffProfileHeader() {
 
             // Staff Name
             Text(
-                text = "Sarah Kumar",
+                text = staffUser.username,
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onPrimaryContainer
@@ -245,7 +277,7 @@ fun StaffProfileHeader() {
 
             // Staff Email
             Text(
-                text = "sarah.kumar@restaurant.com",
+                text = staffUser.email,
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
             )
@@ -272,7 +304,7 @@ fun StaffProfileHeader() {
                             modifier = Modifier.size(16.dp)
                         )
                         Text(
-                            text = "Manager",
+                            text = staffUser.role.replaceFirstChar { it.uppercase() },
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onPrimary,
                             fontWeight = FontWeight.SemiBold
@@ -290,13 +322,13 @@ fun StaffProfileHeader() {
                         horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         Icon(
-                            imageVector = ImageVector.vectorResource(R.drawable.ic_badge),
+                            imageVector = Icons.Default.LocationOn,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.onSecondary,
                             modifier = Modifier.size(16.dp)
                         )
                         Text(
-                            text = "Downtown Branch",
+                            text = staffUser.location.address.city,
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSecondary,
                             fontWeight = FontWeight.SemiBold
@@ -309,7 +341,25 @@ fun StaffProfileHeader() {
 
             // Employee ID
             Text(
-                text = "Employee ID: EMP-2024-1547",
+                text = "Employee ID: ${staffUser.id}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.6f)
+            )
+            
+            // Phone number
+            if (staffUser.phone.isNotBlank()) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Phone: ${staffUser.phone}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.6f)
+                )
+            }
+            
+            // Location ID
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "Location ID: ${staffUser.location.id}",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.6f)
             )

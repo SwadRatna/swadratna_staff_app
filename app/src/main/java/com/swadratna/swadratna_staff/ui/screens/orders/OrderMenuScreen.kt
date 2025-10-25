@@ -105,6 +105,7 @@ fun OrderMenuScreen(
                 }
             } else {
                 SearchBar(
+                    hintText = "Search Menu Items...",
                     query = searchQuery,
                     onQueryChanged = { searchQuery = it },
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)

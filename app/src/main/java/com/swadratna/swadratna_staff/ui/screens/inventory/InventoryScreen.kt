@@ -60,6 +60,7 @@ fun InventoryScreen(viewModel: InventoryViewModel = hiltViewModel()) {
     ) {
         Column(modifier = Modifier.padding(8.dp)) {
             SearchBar(
+                hintText = "Search Menu Items...",
                 searchQuery, modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp),
