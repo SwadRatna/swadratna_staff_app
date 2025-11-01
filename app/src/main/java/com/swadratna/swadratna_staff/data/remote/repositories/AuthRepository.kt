@@ -5,8 +5,6 @@ import androidx.annotation.RequiresApi
 import com.swadratna.swadratna_staff.data.local.dao.StaffUserDao
 import com.swadratna.swadratna_staff.data.local.entities.StaffUser
 import com.swadratna.swadratna_staff.data.remote.model.Staff_User
-import com.swadratna.swadratna_staff.data.remote.model.TokenRefreshRequest
-import com.swadratna.swadratna_staff.data.remote.model.TokenRefreshResponse
 import com.swadratna.swadratna_staff.data.remote.repositories.authentication.TokenManager
 import com.swadratna.swadratna_staff.data.remote.services.ApiService
 import com.swadratna.swadratna_staff.data.remote.services.LoginRequest
@@ -15,6 +13,10 @@ import javax.inject.Inject
 import javax.inject.Named
 import javax.inject.Singleton
 
+/**
+ * Repository for authentication operations in staff applications.
+ * For staff apps, token refreshing is not implemented - users are logged out on 401 errors.
+ */
 @Singleton
 class AuthRepository @Inject constructor(
     @Named("unauthenticated") private val apiService: ApiService,
@@ -35,26 +37,6 @@ class AuthRepository @Inject constructor(
                 Result.failure(Exception("Login failed: ${response.message()}"))
             }
         } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
-    @RequiresApi(Build.VERSION_CODES.O)
-    suspend fun refreshToken(refreshToken: String): Result<TokenRefreshResponse> {
-        return try {
-            val response = apiService.refreshToken(TokenRefreshRequest(refreshToken))
-            if (response.isSuccessful) {
-                response.body()?.let {
-                    tokenManager.saveTokens(it.accessToken)
-                    Result.success(it)
-                } ?: Result.failure(Exception("Token refresh failed: Empty response"))
-            }
-            else {
-                tokenManager.clearTokens() // Clear tokens if refresh fails
-                Result.failure(Exception("Token refresh failed: ${response.message()}"))
-            }
-        } catch (e: Exception) {
-            tokenManager.clearTokens() // Clear tokens on network error during refresh
             Result.failure(e)
         }
     }

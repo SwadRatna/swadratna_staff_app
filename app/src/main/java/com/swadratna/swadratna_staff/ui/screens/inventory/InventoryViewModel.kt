@@ -20,6 +20,7 @@ class InventoryViewModel @Inject constructor(
 
     private val _loading = MutableStateFlow(false)
     val loading: StateFlow<Boolean> = _loading
+
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error
 
@@ -28,6 +29,9 @@ class InventoryViewModel @Inject constructor(
 
     private val _menuItemsMap = MutableStateFlow<Map<String, List<MenuItem>>>(emptyMap())
     val menuItemsMap: StateFlow<Map<String, List<MenuItem>>> = _menuItemsMap.asStateFlow()
+
+    // This will store ALL menu items from all categories
+    private val _allMenuItems = MutableStateFlow<List<MenuItem>>(emptyList())
 
     private val _menuItems = MutableStateFlow<List<MenuItem>>(emptyList())
     val menuItems: StateFlow<List<MenuItem>> = _menuItems.asStateFlow()
@@ -53,6 +57,7 @@ class InventoryViewModel @Inject constructor(
         SharingStarted.WhileSubscribed(5000),
         emptyList()
     )
+
     val staffLocationId: StateFlow<Int?> = staffUserDao.getLoggedInStaffUser()
         .map { staffUser -> staffUser?.location?.id }
         .stateIn(
@@ -82,7 +87,24 @@ class InventoryViewModel @Inject constructor(
             result.onSuccess { response ->
                 _categories.value = response.categories
                 _menuItemsMap.value = response.menuItems
-                _menuItems.value = response.menuItems.values.flatten()
+
+                // Store all menu items from all categories
+                val allItems = response.menuItems.values.flatten()
+                _allMenuItems.value = allItems
+
+                // Show all items initially or items from selected category
+                _menuItems.value = if (_selectedCategory.value != null) {
+                    _menuItemsMap.value.getOrElse(_selectedCategory.value!!.name) { allItems }
+                } else {
+                    allItems
+                }
+
+                // Automatically select the first category after loading
+                if (_selectedCategory.value == null && response.categories.isNotEmpty()) {
+                    _selectedCategory.value = response.categories.first()
+                    _menuItems.value = _menuItemsMap.value.getOrElse(response.categories.first().name) { allItems }
+                }
+
                 _loading.value = false
 
             }.onFailure { exception ->
@@ -94,18 +116,28 @@ class InventoryViewModel @Inject constructor(
 
     fun onCategorySelected(category: Category) {
         _selectedCategory.value = category
+
+        // If there's no active search, filter by selected category
+        if (_searchQuery.value.isEmpty()) {
+            _menuItems.value = _menuItemsMap.value.getOrElse(category.name) { _allMenuItems.value }
+        }
+        // If there's an active search, keep the search results (global search)
     }
 
     fun onSearchQueryChanged(query: String) {
         _searchQuery.value = query
-        viewModelScope.launch {
-            staffLocationId.collect { locationId ->
-                locationId?.let {
-                    getMenuItems(locationId, query)
-                }
+
+        _menuItems.value = if (query.isEmpty()) {
+            // If search query is cleared, revert to selected category
+            _selectedCategory.value?.name?.let { name ->
+                _menuItemsMap.value.getOrElse(name) { _allMenuItems.value }
+            } ?: _allMenuItems.value
+        } else {
+            // Perform a global search across ALL categories
+            _allMenuItems.value.filter { item ->
+                item.name.contains(query, ignoreCase = true)
             }
         }
-        _searchQuery.value = query
     }
 
     fun onAvailabilityChanged(menuItem: MenuItem, isAvailable: Boolean) {
@@ -122,9 +154,32 @@ class InventoryViewModel @Inject constructor(
                             }
                         }
                     }
+
+                    // Also update the all items list
+                    _allMenuItems.update { currentItems ->
+                        currentItems.map { item ->
+                            if (item.id == menuItem.id) {
+                                item.copy(isAvailable = isAvailable)
+                            } else {
+                                item
+                            }
+                        }
+                    }
+
+                    // Update the items in the map as well
+                    _menuItemsMap.update { currentMap ->
+                        currentMap.mapValues { (_, items) ->
+                            items.map { item ->
+                                if (item.id == menuItem.id) {
+                                    item.copy(isAvailable = isAvailable)
+                                } else {
+                                    item
+                                }
+                            }
+                        }
+                    }
                 }
                 is ApiResult.Error -> {
-                    // Handle error, e.g., log it or show a toast
                     println("Error updating availability: ${result.exception.message}")
                 }
             }

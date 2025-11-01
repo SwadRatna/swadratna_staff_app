@@ -1,5 +1,6 @@
 package com.swadratna.swadratna_staff.ui.orderDashboard
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,6 +19,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
@@ -28,10 +30,12 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedFilterChip
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -39,13 +43,17 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavController
+import com.swadratna.swadratna_staff.R
 import com.swadratna.swadratna_staff.data.remote.model.OrderListItem
-import com.swadratna.swadratna_staff.ui.components.SearchBar
+import com.swadratna.swadratna_staff.navigation.NavigationRoute
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -53,7 +61,7 @@ import com.swadratna.swadratna_staff.ui.components.SearchBar
 fun OrderDashboard(
     modifier: Modifier = Modifier,
     viewModel: OrdersDashboardViewModel = hiltViewModel(),
-    navigateToOrderDetails: (Int) -> Unit = {}
+    navController: NavController
 ) {
     val orders by viewModel.orders.collectAsState()
     val loading by viewModel.loading.collectAsState()
@@ -67,14 +75,24 @@ fun OrderDashboard(
 
     Box(modifier = modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize()) {
-
-            SearchBar(
-                hintText = "Search menu items...",
-                query = searchQuery,
-                onQueryChanged = {viewModel.updateSearchQuery(it)},
+            // Search Bar
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { viewModel.updateSearchQuery(it) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp),
+                placeholder = { Text("Search orders...") },
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search") },
+                trailingIcon = {
+                    if (searchQuery.isNotEmpty()) {
+                        IconButton(onClick = { viewModel.updateSearchQuery("") }) {
+                            Icon(Icons.Default.Clear, contentDescription = "Clear search")
+                        }
+                    }
+                },
+                singleLine = true,
+                shape = MaterialTheme.shapes.medium
             )
 
             // Filter Chips
@@ -115,7 +133,7 @@ fun OrderDashboard(
                         modifier = Modifier.fillMaxSize()
                     ) {
                         items(orders) { order ->
-                            OrderCard(order = order)
+                            OrderCard(order = order, navController)
                         }
                     }
                 }
@@ -267,50 +285,158 @@ fun ErrorState(error: String?, onRetry: () -> Unit) {
 }
 
 @Composable
-fun OrderCard(order: OrderListItem) {
+fun OrderCard(order: OrderListItem, navController: NavController) {
     Card(
-        shape = RoundedCornerShape(8.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(enabled = true, onClick = {
+                navController.navigate(
+                    NavigationRoute.Bill.createRoute(order.id.toString())
+                )
+            }),
         colors = CardDefaults.cardColors(MaterialTheme.colorScheme.surface)
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            // Header: Order ID and Status
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
                     text = "Order #${order.id}",
                     fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp
+                    fontSize = 16.sp,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
-                Text(
-                    text = order.orderStatus,
+
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
                     color = when (order.orderStatus) {
-                        "New" -> MaterialTheme.colorScheme.error
-                        "In Progress" -> MaterialTheme.colorScheme.tertiary
-                        else -> MaterialTheme.colorScheme.secondary
-                    },
-                    fontWeight = FontWeight.Bold
-                )
+                        "New" -> MaterialTheme.colorScheme.errorContainer
+                        "In Progress" -> MaterialTheme.colorScheme.tertiaryContainer
+                        "Completed" -> MaterialTheme.colorScheme.primaryContainer
+                        else -> MaterialTheme.colorScheme.secondaryContainer
+                    }
+                ) {
+                    Text(
+                        text = order.orderStatus,
+                        color = when (order.orderStatus) {
+                            "New" -> MaterialTheme.colorScheme.onErrorContainer
+                            "In Progress" -> MaterialTheme.colorScheme.onTertiaryContainer
+                            "Completed" -> MaterialTheme.colorScheme.onPrimaryContainer
+                            else -> MaterialTheme.colorScheme.onSecondaryContainer
+                        },
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 11.sp,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp)
+                    )
+                }
             }
+
             Spacer(modifier = Modifier.height(8.dp))
+
+            // Customer and Table Info in one row
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
+                // Customer Info
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Person,
+                        contentDescription = "Customer",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = order.user.name,
+                        fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.Medium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+
+                // Table Info
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_table),
+                        contentDescription = "Table",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = "Table ${order.table.table_id}",
+                        fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            HorizontalDivider(
+                color = MaterialTheme.colorScheme.outlineVariant,
+                thickness = 0.5.dp
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Price and Time Row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Left side: Pricing
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "₹${order.totalValue}",
+                        fontSize = 18.sp,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold
+                    )
+                    if (order.discount > 0) {
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "(-₹${order.discount})",
+                            fontSize = 11.sp,
+                            color = MaterialTheme.colorScheme.tertiary,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+
+                // Right side: Time
                 Text(
-                    text = "Total Value:",
+                    text = formatOrderTime(order.orderDate),
+                    fontSize = 11.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                Text(
-                    text = "₹${order.totalValue}",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 20.sp
-                )
             }
-            Spacer(modifier = Modifier.height(8.dp))
-            // We can add more order details here if needed
         }
+    }
+}
+
+private fun formatOrderTime(orderDate: String): String {
+    return try {
+        orderDate
+    } catch (e: Exception) {
+        orderDate
     }
 }

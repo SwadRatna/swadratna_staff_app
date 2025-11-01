@@ -8,8 +8,7 @@ import com.swadratna.swadratna_staff.data.remote.model.OccupyTableRequest
 import com.swadratna.swadratna_staff.data.remote.model.OccupyTableResponse
 import com.swadratna.swadratna_staff.data.remote.model.Staff_User
 import com.swadratna.swadratna_staff.data.remote.model.TableListResponse
-import com.swadratna.swadratna_staff.data.remote.model.TokenRefreshRequest
-import com.swadratna.swadratna_staff.data.remote.model.TokenRefreshResponse
+
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.GET
@@ -34,9 +33,6 @@ interface ApiService {
 
     @POST("/api/v1/staff/auth/login")
     suspend fun login(@Body loginRequest: LoginRequest): Response<Staff_User>
-
-    @POST("auth/refresh-token")
-    suspend fun refreshToken(@Body request: TokenRefreshRequest): Response<TokenRefreshResponse>
 
     @GET("/api/v1/staff/tables/{locationId}")
     suspend fun getTablesByLocation(@Path("locationId") locationId: Int): Response<TableListResponse>

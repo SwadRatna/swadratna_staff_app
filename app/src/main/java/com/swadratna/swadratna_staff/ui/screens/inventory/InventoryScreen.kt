@@ -16,6 +16,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -24,10 +25,14 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -53,10 +58,15 @@ fun InventoryScreen(viewModel: InventoryViewModel = hiltViewModel()) {
     val searchQuery by viewModel.searchQuery.collectAsState()
     val filteredMenuItems by viewModel.filteredMenuItems.collectAsState()
     val isLoading by viewModel.loading.collectAsState()
+    val locationId by viewModel.staffLocationId.collectAsState()
 
     SwipeRefreshContainer(
         isRefreshing = isLoading,
-        onRefresh = { viewModel.getMenuItems(1) } // Assuming location ID 1 for now
+        onRefresh = {
+            locationId?.let {
+                viewModel.getMenuItems(it)
+            }
+        }
     ) {
         Column(modifier = Modifier.padding(8.dp)) {
             SearchBar(
@@ -128,8 +138,32 @@ fun MenuItemList(
 
 @Composable
 fun MenuItemCard(
-    item: MenuItem, onAvailabilityChanged: (Boolean) -> Unit
+    item: MenuItem,
+    onAvailabilityChanged: (Boolean) -> Unit
 ) {
+    var showDialog by remember { mutableStateOf(false) }
+
+    if (showDialog) {
+        AlertDialog(
+            onDismissRequest = { showDialog = false },
+            title = { Text("Confirm Action") },
+            text = { Text("This menu item will no longer be visible to users. Do you want to proceed?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDialog = false
+                    onAvailabilityChanged(!item.isAvailable)
+                }) {
+                    Text("Proceed")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
     Card(
         shape = RoundedCornerShape(8.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
@@ -152,7 +186,8 @@ fun MenuItemCard(
                 )
             }
             Switch(
-                checked = item.isAvailable, onCheckedChange = onAvailabilityChanged
+                checked = item.isAvailable,
+                onCheckedChange = { showDialog = true }
             )
         }
     }

@@ -1,6 +1,7 @@
 package com.swadratna.swadratna_staff.navigation
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.CircleShape
@@ -27,7 +28,6 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.swadratna.swadratna_staff.ui.screens.inventory.InventoryScreen
 import com.swadratna.swadratna_staff.ui.screens.orders.OrderTakingScreen
-import com.swadratna.swadratna_staff.ui.screens.orders.OrdersScreen
 import com.swadratna.swadratna_staff.ui.screens.tables.TablesScreen
 import com.swadratna.swadratna_staff.R
 import com.swadratna.swadratna_staff.ui.orderDashboard.OrderDashboard
@@ -116,7 +116,9 @@ fun NavigationComponent(
         containerColor = MaterialTheme.colorScheme.background,
     ) { innerPadding ->
         NavHost(
-            modifier = Modifier.padding(innerPadding),
+            modifier = Modifier.
+            consumeWindowInsets(innerPadding)
+                .padding(innerPadding),
             navController = navController,
             startDestination = startDestination
         ) {
@@ -137,7 +139,10 @@ fun NavigationComponent(
                 InventoryScreen()
             }
             composable(route = NavigationRoute.Orders.route) {
-                OrderDashboard(Modifier.fillMaxSize())
+                OrderDashboard(
+                    Modifier.fillMaxSize(),
+                    navController = navController
+                )
             }
             composable(route = NavigationRoute.Profile.route) {
                 StaffProfileScreen()
