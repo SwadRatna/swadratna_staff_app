@@ -3,6 +3,7 @@ package com.swadratna.swadratna_staff.di
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import com.swadratna.swadratna_staff.data.remote.repositories.authentication.TokenAuthenticator
+import com.swadratna.swadratna_staff.data.remote.repositories.authentication.TokenManager
 import com.swadratna.swadratna_staff.data.remote.services.ApiService
 import dagger.Module
 import dagger.Provides
@@ -52,12 +53,18 @@ object NetworkModule {
     @Provides
     @Singleton
     @Named("authenticated")
-    fun provideOkHttpClient(authenticator: TokenAuthenticator): OkHttpClient {
+    fun provideOkHttpClient(authenticator: TokenAuthenticator, tokenManager: TokenManager): OkHttpClient {
         return OkHttpClient.Builder()
             .addInterceptor { chain ->
                 val originalRequest = chain.request()
+                val accessToken = tokenManager.getAccessToken()
                 val newRequest = originalRequest.newBuilder()
                     .header(X_KEY_HEADER, X_KEY_VALUE)
+                    .apply {
+                        if (accessToken != null) {
+                            header("Authorization", "Bearer $accessToken")
+                        }
+                    }
                     .build()
                 chain.proceed(newRequest)
             }

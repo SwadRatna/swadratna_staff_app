@@ -13,10 +13,12 @@ import androidx.compose.material.icons.filled.AccountBox
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.Menu
+import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -59,8 +61,8 @@ fun OrderMenuScreen(
 
     var selectedCategoryId by remember { mutableStateOf<Int?>(null) }
     var searchQuery by remember { mutableStateOf("") }
-    var showOrderSummary by remember { mutableStateOf(false) }
     var showOrderConfirmationDialog by remember { mutableStateOf(false) }
+    var showExpandedOrderSummary by remember { mutableStateOf(false) }
     var selectedTab by rememberSaveable { mutableStateOf(0) } // 0 for Menu, 1 for Orders
 
     LaunchedEffect(Unit) {
@@ -150,48 +152,37 @@ fun OrderMenuScreen(
                 onResetState = { viewModel.resetOrderConfirmationState() }
             )
         }
-        if (totalItemsInOrder > 0) {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .align(Alignment.BottomCenter),
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
-                ) {
-                    OrderSummaryCard(
-                        currentOrderItems = currentOrderItems,
-                        menuItemsMap = menuItemsMap,
-                        onUpdateOrder = { itemId, quantity ->
-                            viewModel.updateOrderItem(
-                                itemId,
-                                quantity
-                            )
-                        },
-                        showOrderSummary = showOrderSummary,
-                        onToggleSummary = { showOrderSummary = !showOrderSummary }
-                    )
-                    Button(
-                        onClick = { showOrderConfirmationDialog = true },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp)
-                            .height(56.dp),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Text(
-                            "Order ($totalItemsInOrder items)",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    }
+        
+        if (showExpandedOrderSummary) {
+            OrderSummaryDialog(
+                currentOrderItems = currentOrderItems,
+                menuItems = filteredMenuItems,
+                onDismiss = { showExpandedOrderSummary = false },
+                onOrderClick = { 
+                    showExpandedOrderSummary = false
+                    showOrderConfirmationDialog = true 
+                },
+                onQuantityChange = { itemId, quantity ->
+                    viewModel.updateOrderItem(itemId, quantity)
+                },
+                onRemoveItem = { itemId ->
+                    viewModel.updateOrderItem(itemId, 0)
                 }
-
-            }
+            )
+        }
+        if (totalItemsInOrder > 0) {
+            CompactOrderSummaryPill(
+                totalItems = totalItemsInOrder,
+                totalPrice = currentOrderItems.entries.sumOf {
+                    val menuItem = menuItemsMap.values.flatten().find { item -> item.id == it.key }
+                    (menuItem?.price ?: 0.0).toDouble() * it.value
+                },
+                onPillClick = { showExpandedOrderSummary = true },
+                onOrderClick = { showOrderConfirmationDialog = true },
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 16.dp)
+            )
         }
     }
 }
@@ -370,12 +361,213 @@ fun MenuItemOrderCard(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
+fun OrderSummaryDialog(
+    currentOrderItems: Map<Int, Int>,
+    menuItems: List<MenuItem>,
+    onDismiss: () -> Unit,
+    onOrderClick: () -> Unit,
+    onQuantityChange: (Int, Int) -> Unit,
+    onRemoveItem: (Int) -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Order Summary") },
+        text = {
+            LazyColumn(
+                modifier = Modifier.heightIn(max = 400.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(currentOrderItems.toList()) { (itemId, quantity) ->
+                    val menuItem = menuItems.find { it.id == itemId }
+                    if (menuItem != null) {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Text(
+                                        text = menuItem.name,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 14.sp
+                                    )
+                                    Text(
+                                        text = "₹${menuItem.price}",
+                                        fontSize = 12.sp,
+                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                                    )
+                                }
+
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    IconButton(
+                                        onClick = { onQuantityChange(itemId, quantity - 1) },
+                                        modifier = Modifier.size(24.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Close,
+                                            contentDescription = "Decrease",
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                    Text(
+                                        text = quantity.toString(),
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.widthIn(min = 24.dp),
+                                        textAlign = TextAlign.Center
+                                    )
+                                    IconButton(
+                                        onClick = { onQuantityChange(itemId, quantity + 1) },
+                                        modifier = Modifier.size(24.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Add,
+                                            contentDescription = "Increase",
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                    IconButton(
+                                        onClick = { onRemoveItem(itemId) },
+                                        modifier = Modifier.size(24.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Delete,
+                                            contentDescription = "Remove",
+                                            tint = MaterialTheme.colorScheme.error,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = onOrderClick,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Place Order")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun CompactOrderSummaryPill(
+    totalItems: Int,
+    totalPrice: Double,
+    onPillClick: () -> Unit,
+    onOrderClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier,
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            // Shopping cart icon with badge
+            Box {
+                Icon(
+                    imageVector = Icons.Default.ShoppingCart,
+                    contentDescription = "Cart",
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.size(20.dp)
+                )
+                if (totalItems > 0) {
+                    Card(
+                        shape = CircleShape,
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.error),
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .offset(x = 4.dp, y = (-4).dp)
+                    ) {
+                        Text(
+                            text = totalItems.toString(),
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onError,
+                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                        )
+                    }
+                }
+            }
+
+            // Price info
+            Column {
+                Text(
+                    text = "₹%.2f".format(totalPrice),
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+                Text(
+                    text = "$totalItems items",
+                    fontSize = 10.sp,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                )
+            }
+
+            // Expand button
+            IconButton(
+                onClick = onPillClick,
+                modifier = Modifier.size(24.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.ArrowDropDown,
+                    contentDescription = "Expand",
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+
+            // Order button
+            Button(
+                onClick = onOrderClick,
+                modifier = Modifier.height(32.dp),
+                shape = RoundedCornerShape(16.dp),
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
+            ) {
+                Text(
+                    text = "Order",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
 fun OrderSummaryCard(
     currentOrderItems: Map<Int, Int>,
     menuItemsMap: Map<String, List<MenuItem>>,
-    onUpdateOrder: (Int, Int) -> Unit,
-    showOrderSummary: Boolean,
-    onToggleSummary: () -> Unit
+    onUpdateOrder: (Int, Int) -> Unit
 ) {
     val allMenuItems =
         remember(menuItemsMap) { menuItemsMap.values.flatten().associateBy { it.id } }
@@ -396,7 +588,6 @@ fun OrderSummaryCard(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable(onClick = onToggleSummary)
                     .padding(16.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
@@ -412,48 +603,45 @@ fun OrderSummaryCard(
                     fontSize = 18.sp,
                     color = MaterialTheme.colorScheme.primary
                 )
-                Icon(imageVector = Icons.Default.ArrowDropDown , contentDescription = "expand control")
             }
 
-            AnimatedVisibility(visible = showOrderSummary) {
-                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(max = 200.dp),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(currentOrderItems.entries.toList()) { (itemId, quantity) ->
-                        val menuItem = allMenuItems[itemId]
-                        menuItem?.let {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(it.name, fontWeight = FontWeight.Medium)
-                                    Text(
-                                        "₹%.2f".format(it.price.toDouble()),
-                                        fontSize = 12.sp,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 200.dp),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(currentOrderItems.entries.toList()) { (itemId, quantity) ->
+                    val menuItem = allMenuItems[itemId]
+                    menuItem?.let {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(it.name, fontWeight = FontWeight.Medium)
+                                Text(
+                                    "₹%.2f".format(it.price.toDouble()),
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                IconButton(onClick = { onUpdateOrder(itemId, quantity - 1) }) {
+                                    Icon(
+                                        Icons.Default.Delete,
+                                        contentDescription = "Decrease quantity"
                                     )
                                 }
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    IconButton(onClick = { onUpdateOrder(itemId, quantity - 1) }) {
-                                        Icon(
-                                            Icons.Default.Delete,
-                                            contentDescription = "Decrease quantity"
-                                        )
-                                    }
-                                    Text("$quantity", fontWeight = FontWeight.Bold)
-                                    IconButton(onClick = { onUpdateOrder(itemId, quantity + 1) }) {
-                                        Icon(
-                                            Icons.Default.Add,
-                                            contentDescription = "Increase quantity"
-                                        )
-                                    }
+                                Text("$quantity", fontWeight = FontWeight.Bold)
+                                IconButton(onClick = { onUpdateOrder(itemId, quantity + 1) }) {
+                                    Icon(
+                                        Icons.Default.Add,
+                                        contentDescription = "Increase quantity"
+                                    )
                                 }
                             }
                         }

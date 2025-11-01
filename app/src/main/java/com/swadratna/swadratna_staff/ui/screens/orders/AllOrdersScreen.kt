@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -72,10 +74,11 @@ fun OrdersScreen(
     }
 
     Scaffold(
+        modifier = modifier,
         bottomBar = {
             if (userHaveOrders) {
                 Row(
-                    modifier = modifier
+                    modifier = Modifier
                         .background(MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp))
                         .padding(16.dp),
                     horizontalArrangement = Arrangement.Center
@@ -121,6 +124,7 @@ fun OrdersScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
+                        .consumeWindowInsets(paddingValues)
                         .padding(paddingValues),
                     contentAlignment = Alignment.Center
                 ) {

@@ -15,6 +15,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowForward
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -212,6 +213,14 @@ fun PayBillScreen(
         topBar = {
             TopAppBar(
                 title = { Text("Pay Bill", fontWeight = FontWeight.SemiBold) },
+                navigationIcon = {
+                    IconButton(onClick = { navController.popBackStack() }) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Close Bill"
+                        )
+                    }
+                },
                 actions = {
                     Button(
                         onClick = { printBill() },
@@ -370,7 +379,7 @@ fun SuccessBillLayout(
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     // NOTE: isVeg is not in your current data structure, assuming true
-                    VegNonVegIndicator(isVeg = item.menuItem.isVegetarian, modifier = Modifier.padding(end = 8.dp))
+                    VegNonVegIndicator(isVeg = item.menuItem.isVegetarian ?: false , modifier = Modifier.padding(end = 8.dp))
                     Column {
                         Text(item.menuItem.name, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
                         item.instructions?.let {
@@ -394,10 +403,13 @@ fun SuccessBillLayout(
             Text("Your bill details", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.height(8.dp))
 
-            BillDetailRow("Item total", bill?.totalAmount ?: 0.0) // Using total as item total placeholder
-            BillDetailRow("CGST", 36.5, prefix = "+ ")
-            BillDetailRow("SGST", 36.5, prefix = "+ ")
+            bill.let { bill ->
+                BillDetailRow("Item total", bill.subTotal) // Using total as item total placeholder
+                BillDetailRow("CGST", bill.taxAmount/2, prefix = "+ ")
+                BillDetailRow("SGST", bill.taxAmount/2 , prefix = "+ ")
+                BillDetailRow("Service Charge", bill.serviceCharge , prefix = "+ ")
 
+            }
             Spacer(modifier = Modifier.height(16.dp))
             HorizontalDivider(color = Color.Black, thickness = 1.dp)
             Spacer(modifier = Modifier.height(16.dp))
