@@ -17,6 +17,8 @@ import androidx.compose.material.icons.filled.AccountBox
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.outlined.Menu
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -77,6 +79,10 @@ fun OrderTakingScreen(
     val categories by viewModel.categories.collectAsState()
     var selectedCategoryId by remember { mutableStateOf<Int?>(null) }
     var selectedTab by remember { mutableStateOf(defaultTab.coerceIn(0, 1)) }
+    
+    // Free table dialog state
+    var showFreeTableDialog by remember { mutableStateOf(false) }
+    val freeTableState by viewModel.freeTableState.collectAsState()
 
     // Validate tab selection based on available tabs
     LaunchedEffect(showMenuTab, showOrdersTab) {
@@ -91,13 +97,24 @@ fun OrderTakingScreen(
         }
     }
 
-    LaunchedEffect(Unit) {
-        viewModel.getMenuItems("")
-    }
-
     LaunchedEffect(categories) {
         if (selectedCategoryId == null && categories.isNotEmpty()) {
             selectedCategoryId = categories.first().id
+        }
+    }
+
+    // Handle free table response
+    LaunchedEffect(freeTableState) {
+        when (freeTableState) {
+            is FreeTableState.Success -> {
+                viewModel.resetFreeTableState()
+                onBack() // Navigate back to table screen
+            }
+            is FreeTableState.Error -> {
+                // Error is handled by the ViewModel, just reset state
+                viewModel.resetFreeTableState()
+            }
+            else -> {} // Do nothing for Loading or Idle states
         }
     }
 
@@ -122,6 +139,18 @@ fun OrderTakingScreen(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    Button(
+                        onClick = { showFreeTableDialog = true },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.surface,
+                            contentColor = MaterialTheme.colorScheme.primary,
+                        ),
+                        modifier = Modifier.padding(horizontal = 8.dp)
+                    ) {
+                        Text("Free Table", fontSize = 14.sp)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -184,5 +213,31 @@ fun OrderTakingScreen(
                 viewModel = viewModel
             )
         }
+    }
+
+    // Free Table Confirmation Dialog
+    if (showFreeTableDialog) {
+        AlertDialog(
+            onDismissRequest = { showFreeTableDialog = false },
+            title = { Text("Free Table") },
+            text = { Text("Are you sure you want to free table $tableNumber? This action will cancel the current order.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showFreeTableDialog = false
+                        viewModel.freeTheTable(tableNumber, true, "Table freed by staff")
+                    }
+                ) {
+                    Text("Yes, Free Table")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showFreeTableDialog = false }
+                ) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }

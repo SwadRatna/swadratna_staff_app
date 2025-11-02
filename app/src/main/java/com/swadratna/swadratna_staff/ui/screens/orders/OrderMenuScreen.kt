@@ -51,7 +51,6 @@ fun OrderMenuScreen(
     navController: NavController,
     viewModel: OrderManagementViewModel = hiltViewModel()
 ) {
-    // UPDATED STATE FLOWS: Using the new states from the ViewModel
     val categories by viewModel.categories.collectAsState()
     val menuItemsMap by viewModel.menuItemsMap.collectAsState()
     val loading by viewModel.loading.collectAsState()
@@ -64,26 +63,26 @@ fun OrderMenuScreen(
     var showOrderConfirmationDialog by remember { mutableStateOf(false) }
     var showExpandedOrderSummary by remember { mutableStateOf(false) }
     var selectedTab by rememberSaveable { mutableStateOf(0) } // 0 for Menu, 1 for Orders
+    val staffLocationId by viewModel.staffLocationId.collectAsState()
 
-    LaunchedEffect(Unit) {
-        viewModel.getMenuItems("")
+    LaunchedEffect(staffLocationId) {
+        staffLocationId?.let {staffLocationId ->
+            viewModel.getMenuItems(staffLocationId, "")
+        }
     }
 
-    // Initialize or reset selectedCategoryId when categories load
     LaunchedEffect(categories) {
         if (selectedCategoryId == null && categories.isNotEmpty()) {
             selectedCategoryId = categories.first().id // Use category.id
         }
     }
 
-    // Get menu items for the currently selected category
     val currentMenuItems: List<MenuItem> = remember(selectedCategoryId, menuItemsMap) {
         selectedCategoryId?.let { id ->
             menuItemsMap[id.toString()]
         } ?: emptyList()
     }
 
-    // Filter the items based on the search query
     val filteredMenuItems = remember(currentMenuItems, searchQuery) {
         currentMenuItems.filter { item ->
             item.isAvailable && item.name.contains(searchQuery, ignoreCase = true)
