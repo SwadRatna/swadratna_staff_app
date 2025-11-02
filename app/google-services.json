@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "907372018266",
+    "project_id": "swad-ratna-app",
+    "storage_bucket": "swad-ratna-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:907372018266:android:e7efbdfff4394503643663",
+        "android_client_info": {
+          "package_name": "com.swadratna.swadratna_staff"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBsdj63EW8SmIrKvyzBVJilzBdfAT-Eudo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

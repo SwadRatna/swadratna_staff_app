@@ -1,5 +1,7 @@
 package com.swadratna.swadratna_staff.data.remote.services
 
+import com.swadratna.swadratna_staff.RegisterDeviceTokenRequest
+import com.swadratna.swadratna_staff.RegisterDeviceTokenResponse
 import com.swadratna.swadratna_staff.data.remote.model.AllOrdersResponse
 import com.swadratna.swadratna_staff.data.remote.model.CustomerBill
 import com.swadratna.swadratna_staff.data.remote.model.CustomerResponse
@@ -25,6 +27,8 @@ import com.swadratna.swadratna_staff.data.remote.model.KotStatusUpdateResponse
 
 import com.swadratna.swadratna_staff.data.remote.model.OrderDetailsX
 import com.swadratna.swadratna_staff.data.remote.model.BillDetail
+import com.swadratna.swadratna_staff.data.remote.model.FreeTableRequest
+import com.swadratna.swadratna_staff.data.remote.model.FreeTableResponse
 
 data class BillActionRequest(
     val action: String,
@@ -106,15 +110,9 @@ interface ApiService {
         @Body request: FreeTableRequest
     ): Response<FreeTableResponse>
 
+    @POST("/api/v1/notifications/register-device")
+    suspend fun registerDeviceToken(
+        @Body request: RegisterDeviceTokenRequest
+    ): Response<RegisterDeviceTokenResponse>
+
 }
-
-data class FreeTableRequest(
-    val cancel_order: Boolean,
-    val reason: String
-)
-
-data class FreeTableResponse(
-    val success: Boolean,
-    val message: String,
-
-)

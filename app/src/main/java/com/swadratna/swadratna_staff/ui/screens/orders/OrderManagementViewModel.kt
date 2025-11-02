@@ -15,12 +15,14 @@ import com.swadratna.swadratna_staff.data.remote.model.TableListResponse
 import com.swadratna.swadratna_staff.data.remote.repositories.OrderManagementRepository
 import com.swadratna.swadratna_staff.data.remote.model.OrderDetailsX
 import com.swadratna.swadratna_staff.data.remote.model.BillDetail
+import com.swadratna.swadratna_staff.data.remote.model.FreeTableResponse
 
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -68,6 +70,13 @@ sealed class BillDetailsState {
     object Idle : BillDetailsState()
 }
 
+sealed class FreeTableState {
+    object Idle : FreeTableState()
+    object Loading : FreeTableState()
+    data class Success(val response: FreeTableResponse) : FreeTableState()
+    data class Error(val message: String) : FreeTableState()
+}
+
 @HiltViewModel
 class OrderManagementViewModel @Inject constructor(
     private val repository: OrderManagementRepository,
@@ -112,6 +121,9 @@ class OrderManagementViewModel @Inject constructor(
 
     private val _billDetailsState = MutableStateFlow<BillDetailsState>(BillDetailsState.Idle)
     val billDetailsState: StateFlow<BillDetailsState> = _billDetailsState.asStateFlow()
+
+    private val _freeTableState = MutableStateFlow<FreeTableState>(FreeTableState.Idle)
+    val freeTableState: StateFlow<FreeTableState> = _freeTableState.asStateFlow()
 
     private val _staffRole = MutableStateFlow<String?>(null)
     val staffRole: StateFlow<String?> = _staffRole.asStateFlow()
@@ -193,7 +205,6 @@ class OrderManagementViewModel @Inject constructor(
         )
 
     init {
-        // Automatically call getTables when staffLocationId changes and is not null
         viewModelScope.launch {
             staffLocationId.collect { locationId ->
                 locationId?.let {
@@ -201,7 +212,7 @@ class OrderManagementViewModel @Inject constructor(
                 }
             }
         }
-        fetchStaffRole() // Call fetchStaffRole here
+        fetchStaffRole()
     }
 
     fun getTables(locationId: Int) {
@@ -215,22 +226,20 @@ class OrderManagementViewModel @Inject constructor(
         }
     }
 
-    fun getMenuItems( searchQuery: String? = null) {
+    fun getMenuItems( staffLocationId:Int , searchQuery: String? = null) {
         viewModelScope.launch {
             _loading.value = true
             _error.value = null
-            staffLocationId.value?.let {
-                val result = repository.getMenu(it, searchQuery)
+            val result = repository.getMenu(staffLocationId, searchQuery)
 
-                result.onSuccess { response ->
-                    _categories.value = response.categories
-                    _menuItemsMap.value = response.menuItems
-                    _loading.value = false
+            result.onSuccess { response ->
+                _categories.value = response.categories
+                _menuItemsMap.value = response.menuItems
+                _loading.value = false
 
-                }.onFailure { exception ->
-                    _error.value = exception.message
-                    _loading.value = false
-                }
+            }.onFailure { exception ->
+                _error.value = exception.message
+                _loading.value = false
             }
         }
     }
@@ -305,5 +314,18 @@ class OrderManagementViewModel @Inject constructor(
                 .onFailure { _error.value = it.message }
             _loading.value = false
         }
+    }
+
+    fun freeTheTable(tableId: Int, cancelOrder: Boolean, reason: String) {
+        viewModelScope.launch {
+            _freeTableState.value = FreeTableState.Loading
+            repository.freeTheTable(tableId, cancelOrder, reason)
+                .onSuccess { _freeTableState.value = FreeTableState.Success(it) }
+                .onFailure { _freeTableState.value = FreeTableState.Error(it.message ?: "Unknown error") }
+        }
+    }
+
+    fun resetFreeTableState() {
+        _freeTableState.value = FreeTableState.Idle
     }
 }

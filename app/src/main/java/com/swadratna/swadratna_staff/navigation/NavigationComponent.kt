@@ -1,5 +1,7 @@
 package com.swadratna.swadratna_staff.navigation
 
+import android.content.Context
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -12,11 +14,14 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
@@ -34,6 +39,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.swadratna.swadratna_staff.MainActivity
 import com.swadratna.swadratna_staff.ui.screens.inventory.InventoryScreen
 import com.swadratna.swadratna_staff.ui.screens.orders.OrderTakingScreen
 import com.swadratna.swadratna_staff.ui.screens.tables.TablesScreen
@@ -67,13 +73,54 @@ fun NavigationComponent(
     val currentScreen = items.find { it.route == currentRoute }
     val shouldShowBottomBar = items.any { it.route == currentRoute }
 
+    // Handle deep link navigation
+    val context = LocalContext.current
+    LaunchedEffect(currentRoute) {
+        // Only process deep links when we're on a valid screen (not login)
+        if (currentRoute != NavigationRoute.Login.route && currentRoute != null) {
+            Log.d("NavigationComponent", "Checking for deep link data on route: $currentRoute")
+            val deepLinkData = MainActivity.getDeepLinkData(context)
+            Log.d("NavigationComponent", "Deep link data found: ${deepLinkData != null}")
+            
+            if (deepLinkData != null) {
+                val (type, orderId, tableNumber) = deepLinkData
+                Log.d("NavigationComponent", "Processing deep link - Type: $type, OrderId: $orderId, TableNumber: $tableNumber")
+                
+                if (type == "order" || type == "deep_link_order" || type == "new_order") {
+                    // Navigate to order taking screen
+                    val route = "${NavigationRoute.OrderTaking.route}/$tableNumber/$orderId?showMenuTab=true&showOrdersTab=true&defaultTab=1"
+                    Log.d("NavigationComponent", "Navigating to order taking screen: $route")
+                    
+                    navController.navigate(route) {
+                        popUpTo(navController.graph.findStartDestination().id) {
+                            inclusive = false
+                        }
+                        launchSingleTop = true
+                    }
+                    MainActivity.clearDeepLinkData(context)
+                } else if (type == "payment_completed") {
+                    // Navigate to bill screen
+                    val route = "${NavigationRoute.Bill.route}/$orderId"
+                    Log.d("NavigationComponent", "Navigating to bill screen: $route")
+                    
+                    navController.navigate(route) {
+                        popUpTo(navController.graph.findStartDestination().id) {
+                            inclusive = false
+                        }
+                        launchSingleTop = true
+                    }
+                    MainActivity.clearDeepLinkData(context)
+                }
+            }
+        }
+    }
+
     Scaffold(
         topBar = {
             if (shouldShowBottomBar) {
                 TopAppBar(
                     title = {
-                        Text(text = stringResource(R.string.company_name), fontFamily = FontFamily.Cursive,
-                            fontWeight =  FontWeight.Bold, fontSize = 28.sp)
+                        Text(text = stringResource(R.string.company_name), fontFamily = FontFamily.Cursive, fontSize = 28.sp)
                     }, actions = {
                         IconButton(
                             onClick = {
@@ -136,12 +183,12 @@ fun NavigationComponent(
         ) {
             composable(route = NavigationRoute.Login.route) {
                 LoginScreen(onLoginSuccess = {
-                    navController.navigate(NavigationRoute.Tables.route) {
-                        popUpTo(navController.graph.id) {
-                            inclusive = true
-                        }
+                navController.navigate(NavigationRoute.Tables.route) {
+                    popUpTo(navController.graph.id) {
+                        inclusive = true
                     }
-                })
+                }
+            })
             }
 
             composable(route = NavigationRoute.Tables.route) {
