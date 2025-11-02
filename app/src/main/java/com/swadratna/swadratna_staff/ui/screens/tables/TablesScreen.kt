@@ -72,7 +72,13 @@ fun TablesScreen(navController: NavController,
                                         selectedTable = clickedTable
                                         showDialog = true
                                     } else {
-                                        navController.navigate("${NavigationRoute.OrderTaking.route}/${clickedTable.id}/${clickedTable.occupancy.order_id}")
+                                        navController.navigate(NavigationRoute.OrderTaking.createRoute(
+                                            tableNumber = clickedTable.id,
+                                            orderId = clickedTable.occupancy.order_id,
+                                            showMenuTab = true,
+                                            showOrdersTab = true,
+                                            defaultTab = 0
+                                        ))
                                     }
                                 }
                             )
@@ -83,11 +89,19 @@ fun TablesScreen(navController: NavController,
 
             if (showDialog && selectedTable != null) {
                 AssignTableDialog(
-                    tableNumber = selectedTable!!.id,
+                    tableId = selectedTable!!.id,
+                    tableNumber = selectedTable!!.table_id,
                     onDismiss = { showDialog = false },
                     onTableOccupied = { orderId ->
                         showDialog = false // Dismiss the dialog
-                        navController.navigate("${NavigationRoute.OrderTaking.route}/${selectedTable!!.id}/${orderId}")
+
+                        navController.navigate(NavigationRoute.OrderTaking.createRoute(
+                            tableNumber = selectedTable!!.id.toInt(),
+                            orderId = orderId.toInt(),
+                            showMenuTab = true,
+                            showOrdersTab = true,
+                            defaultTab = 0
+                        ))
                     }
                 )
             }
@@ -113,7 +127,7 @@ fun TableCard(table: Table, onClick: (Table) -> Unit) {
         ) {
             Text(
                 text = "${table.table_id}.",
-                color = MaterialTheme.colorScheme.onSurface,
+                color = if(table.is_occupied)MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
                 fontSize = 16.sp
             )
             if (table.is_occupied) {

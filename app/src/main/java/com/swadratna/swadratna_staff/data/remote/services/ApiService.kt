@@ -19,6 +19,9 @@ import retrofit2.http.Query
 import retrofit2.http.Header
 import com.swadratna.swadratna_staff.data.remote.model.KotRequest
 import com.swadratna.swadratna_staff.data.remote.model.KotResponse
+import com.swadratna.swadratna_staff.data.remote.model.KotListResponse
+import com.swadratna.swadratna_staff.data.remote.model.KotStatusUpdateRequest
+import com.swadratna.swadratna_staff.data.remote.model.KotStatusUpdateResponse
 
 import com.swadratna.swadratna_staff.data.remote.model.OrderDetailsX
 import com.swadratna.swadratna_staff.data.remote.model.BillDetail
@@ -64,7 +67,7 @@ interface ApiService {
         @Body request: BillActionRequest
     ): Response<ApproveBillResponse>
 
-    @PATCH("menuItemAvailability/{locationId}/{menuId}")
+    @PATCH("/api/v1/staff/menu/availability/{locationId}/{menuId}")
     suspend fun updateMenuItemAvailability(
         @Path("locationId") locationId: String,
         @Path("menuId") menuId: String,
@@ -83,4 +86,35 @@ interface ApiService {
         @Query("page") page: Int,
         @Query("limit") limit: Int
     ): Response<AllOrdersResponse>
+
+    @GET("/api/v1/staff/kots")
+    suspend fun getKots(
+        @Query("location_id") locationId: Int,
+        @Query("pending_only") pendingOnly: Boolean? = null
+    ): Response<KotListResponse>
+
+    @PATCH("/api/v1/staff/kots/{kotId}/status")
+    suspend fun updateKotStatus(
+        @Path("kotId") kotId: Int,
+        @Body request: KotStatusUpdateRequest
+    ): Response<KotStatusUpdateResponse>
+
+
+    @POST("/api/v1/staff/tables/{tableId}/free")
+    suspend fun freeTheTable(
+        @Path("tableId") tableId: Int,
+        @Body request: FreeTableRequest
+    ): Response<FreeTableResponse>
+
 }
+
+data class FreeTableRequest(
+    val cancel_order: Boolean,
+    val reason: String
+)
+
+data class FreeTableResponse(
+    val success: Boolean,
+    val message: String,
+
+)

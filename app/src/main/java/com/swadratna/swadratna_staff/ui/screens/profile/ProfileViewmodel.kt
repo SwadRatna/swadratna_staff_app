@@ -27,8 +27,8 @@ class ProfileViewmodel @Inject constructor(
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading
 
-    private val _loginSuccess = MutableStateFlow(false)
-    val loginSuccess: StateFlow<Boolean> = _loginSuccess
+    private val _logoutSuccess = MutableStateFlow(false)
+    val logoutSuccess: StateFlow<Boolean> = _logoutSuccess
 
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error
@@ -63,11 +63,8 @@ class ProfileViewmodel @Inject constructor(
             authRepository.logout()
             staffUserDao.clearStaffUsers()
              _isLoading.value = false
+            _logoutSuccess.value = true
         }
     }
 
-    fun resetLoginState() {
-        _loginSuccess.value = false
-        _error.value = null
-    }
 }

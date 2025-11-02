@@ -15,8 +15,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.vectorResource
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
@@ -34,6 +42,8 @@ import com.swadratna.swadratna_staff.ui.orderDashboard.OrderDashboard
 import com.swadratna.swadratna_staff.ui.screens.login.LoginScreen
 import com.swadratna.swadratna_staff.ui.screens.orders.PayBillScreen
 import com.swadratna.swadratna_staff.ui.screens.profile.StaffProfileScreen
+import com.swadratna.swadratna_staff.ui.screens.kot.KotListScreen
+import com.swadratna.swadratna_staff.ui.theme.fontFamily
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -43,6 +53,7 @@ fun NavigationComponent(
 ) {
     val items = listOf(
         NavigationRoute.Orders,
+        NavigationRoute.KotList,
         NavigationRoute.Tables,
         NavigationRoute.Inventory
     )
@@ -61,7 +72,8 @@ fun NavigationComponent(
             if (shouldShowBottomBar) {
                 TopAppBar(
                     title = {
-                        Text(text = stringResource(R.string.company_name))
+                        Text(text = stringResource(R.string.company_name), fontFamily = FontFamily.Cursive,
+                            fontWeight =  FontWeight.Bold, fontSize = 28.sp)
                     }, actions = {
                         IconButton(
                             onClick = {
@@ -71,7 +83,7 @@ fun NavigationComponent(
                                 .background(MaterialTheme.colorScheme.primary, CircleShape)
                         ) {
                             Icon(
-                                Icons.Default.Person,
+                                painter = painterResource(R.drawable.ic_person),
                                 contentDescription = "Profile",
                                 tint = MaterialTheme.colorScheme.surface
                             )
@@ -90,7 +102,7 @@ fun NavigationComponent(
                     val currentDestination = navBackStackEntry?.destination
                     items.forEach { screen ->
                         NavigationBarItem(
-                            icon = { Icon(screen.icon, contentDescription = null) },
+                            icon = { Icon(painter = painterResource( screen.icon), contentDescription = null) },
                             label = { Text(screen.title) },
                             selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true,
                             onClick = {
@@ -145,20 +157,42 @@ fun NavigationComponent(
                 )
             }
             composable(route = NavigationRoute.Profile.route) {
-                StaffProfileScreen()
+                StaffProfileScreen(navController = navController)
             }
             composable(
-                route = "${NavigationRoute.OrderTaking.route}/{tableNumber}/{orderId}",
+                route = "${NavigationRoute.OrderTaking.route}/{tableNumber}/{orderId}?showMenuTab={showMenuTab}&showOrdersTab={showOrdersTab}&defaultTab={defaultTab}",
                 arguments = listOf(
                     navArgument("tableNumber") { type = NavType.IntType },
-                    navArgument("orderId") { type = NavType.StringType })) { backStackEntry ->
+                    navArgument("orderId") { type = NavType.StringType },
+                    navArgument("showMenuTab") { 
+                        type = NavType.BoolType
+                        defaultValue = true 
+                    },
+                    navArgument("showOrdersTab") { 
+                        type = NavType.BoolType
+                        defaultValue = true 
+                    },
+                    navArgument("defaultTab") { 
+                        type = NavType.IntType
+                        defaultValue = 0 
+                    }
+                )
+            ) { backStackEntry ->
                 val tableNumber = backStackEntry.arguments?.getInt("tableNumber") ?: 0
                 val orderId = backStackEntry.arguments?.getString("orderId") ?: ""
+                val showMenuTab = backStackEntry.arguments?.getBoolean("showMenuTab") ?: true
+                val showOrdersTab = backStackEntry.arguments?.getBoolean("showOrdersTab") ?: true
+                val defaultTab = backStackEntry.arguments?.getInt("defaultTab") ?: 0
+                
                 OrderTakingScreen(
+                    navController = navController,
                     tableNumber = tableNumber,
-                    orderId = orderId,
-                    onBack = { navController.popBackStack() },
-                    navController = navController)
+                    orderId = orderId.toIntOrNull(),
+                    showMenuTab = showMenuTab,
+                    showOrdersTab = showOrdersTab,
+                    defaultTab = defaultTab,
+                    onBack = { navController.popBackStack() }
+                )
             }
             composable(
                 route = "${NavigationRoute.Bill.route}/{orderId}",
@@ -166,25 +200,46 @@ fun NavigationComponent(
                 val orderId = backStackEntry.arguments?.getString("orderId")
                 PayBillScreen(navController = navController, orderId = orderId)
             }
+            composable(route = NavigationRoute.KotList.route) {
+                KotListScreen(navController = navController)
+            }
         }
     }
 }
 
-sealed class NavigationRoute(val route: String, val title: String, val icon: ImageVector) {
-    object Login : NavigationRoute("login", "Login", Icons.Default.Person)
-    object Orders : NavigationRoute("orders", "Orders", Icons.Default.List) {
+sealed class NavigationRoute(val route: String, val title: String, val icon: Int) {
+    object Login : NavigationRoute("login", "Login", R.drawable.ic_login)
+    object Orders : NavigationRoute("orders", "Orders",R.drawable.ic_order) {
         fun createRoute(orderId: String) = "orders/$orderId"
     }
-    object Tables : NavigationRoute("tables", "Tables", Icons.Default.Home)
-    object Inventory : NavigationRoute("inventory", "Inventory", Icons.Default.ShoppingCart)
-    object Profile : NavigationRoute("profile", "Profile", Icons.Default.Person)
-    object OrderTaking : NavigationRoute("order_taking", "Order Taking", Icons.Default.List)
+    object Tables : NavigationRoute("tables", "Tables", R.drawable.ic_table)
+    object Inventory : NavigationRoute("inventory", "Inventory", R.drawable.ic_inventory)
+    object Profile : NavigationRoute("profile", "Profile", R.drawable.ic_person)
+    object OrderTaking : NavigationRoute("order_taking", "Order Taking", R.drawable.ic_order) {
+        fun createRoute(
+            tableNumber: Int, 
+            orderId: Int,
+            showMenuTab: Boolean = true,
+            showOrdersTab: Boolean = true,
+            defaultTab: Int = 0
+        ): String {
+            val baseRoute = "${route}/$tableNumber/$orderId"
+            val params = mutableListOf<String>()
+            
+            if (!showMenuTab) params.add("showMenuTab=false")
+            if (!showOrdersTab) params.add("showOrdersTab=false")
+            if (defaultTab != 0) params.add("defaultTab=$defaultTab")
+            
+            return if (params.isEmpty()) baseRoute else "$baseRoute?${params.joinToString("&")}"
+        }
+    }
 
-    object AllOrderScreen : NavigationRoute("order_taking", "Order Taking", Icons.Default.List)
+//    object AllOrderScreen : NavigationRoute("order_taking", "Order Taking", Icons.Default.List)
+//
+//    object OrderMenuScreen : NavigationRoute("order_taking", "Order Taking", Icons.Default.List)
 
-    object OrderMenuScreen : NavigationRoute("order_taking", "Order Taking", Icons.Default.List)
-
-    object Bill : NavigationRoute("bill", "Bill", Icons.Default.List) {
+    object Bill : NavigationRoute("bill", "Bill", R.drawable.ic_recipt) {
         fun createRoute(orderId: String) = "bill/$orderId"
     }
+    object KotList : NavigationRoute("kot_list", "KOTs", R.drawable.ic_kot)
 }

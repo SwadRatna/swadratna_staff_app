@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -50,18 +49,47 @@ import com.swadratna.swadratna_staff.ui.components.NavButton
 import com.swadratna.swadratna_staff.ui.theme.RedGrey20
 import kotlin.math.absoluteValue
 
+/**
+ * Order taking screen with customizable bottom navigation options.
+ *
+ * @param navController Navigation controller for screen transitions
+ * @param tableNumber The table number for the current order
+ * @param orderId Optional order ID for existing orders
+ * @param showMenuTab Whether to show the Menu tab in the bottom navigation (default: true)
+ * @param showOrdersTab Whether to show the Orders tab in the bottom navigation (default: true)
+ * @param defaultTab The default tab to show when the screen loads (0 for Menu, 1 for Orders)
+ *         Note: When both showMenuTab and showOrdersTab are false, the content of the defaultTab
+ *         will still be displayed, but without the bottom navigation bar.
+ * @param viewModel The ViewModel for managing order data
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun OrderTakingScreen(
+    navController: NavController,
     tableNumber: Int,
-    orderId: String,
+    orderId: Int? = null,
+    showMenuTab: Boolean = true,
+    showOrdersTab: Boolean = true,
+    defaultTab: Int = 0,
     onBack: () -> Unit,
-    navController: NavController, // Added navController
     viewModel: OrderManagementViewModel = hiltViewModel()
 ) {
     val categories by viewModel.categories.collectAsState()
     var selectedCategoryId by remember { mutableStateOf<Int?>(null) }
-    var selectedTab by remember { mutableStateOf(0) }
+    var selectedTab by remember { mutableStateOf(defaultTab.coerceIn(0, 1)) }
+
+    // Validate tab selection based on available tabs
+    LaunchedEffect(showMenuTab, showOrdersTab) {
+        when {
+            !showMenuTab && !showOrdersTab -> {
+                // No tabs available, but still show the default tab content
+                selectedTab = defaultTab.coerceIn(0, 1)
+            }
+            !showMenuTab && showOrdersTab -> selectedTab = 1 // Only orders tab available
+            showMenuTab && !showOrdersTab -> selectedTab = 0 // Only menu tab available
+            else -> selectedTab = defaultTab.coerceIn(0, 1) // Both tabs available, use default
+        }
+    }
 
     LaunchedEffect(Unit) {
         viewModel.getMenuItems("")
@@ -104,34 +132,40 @@ fun OrderTakingScreen(
             )
         },
         bottomBar = {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.surface).padding(10.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // Button 1: Menu
-                NavButton(
-                    label = "Menu",
-                    icon = Icons.Filled.Menu,
-                    isSelected = selectedTab == 0,
-                    onClick = {
-                        selectedTab = 0
-                              },
-                    unselectedContainerColor = RedGrey20,
-                    modifier = Modifier.weight(1f)
-                )
+            if (showMenuTab || showOrdersTab) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.surface).padding(10.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Button 1: Menu
+                    if (showMenuTab) {
+                        NavButton(
+                            label = "Menu",
+                            icon = Icons.Filled.Menu,
+                            isSelected = selectedTab == 0,
+                            onClick = {
+                                selectedTab = 0
+                                      },
+                            unselectedContainerColor = RedGrey20,
+                            modifier = Modifier.weight(if (showOrdersTab) 1f else 2f)
+                        )
+                    }
 
-                // Button 2: Orders
-                NavButton(
-                    label = "Orders",
-                    icon = Icons.Filled.AccountBox,
-                    isSelected = selectedTab == 1,
-                    onClick = { selectedTab = 1 },
-                    unselectedContainerColor = RedGrey20,
-                    modifier = Modifier.weight(1f)
-                )
+                    // Button 2: Orders
+                    if (showOrdersTab) {
+                        NavButton(
+                            label = "Orders",
+                            icon = Icons.Filled.AccountBox,
+                            isSelected = selectedTab == 1,
+                            onClick = { selectedTab = 1 },
+                            unselectedContainerColor = RedGrey20,
+                            modifier = Modifier.weight(if (showMenuTab) 1f else 2f)
+                        )
+                    }
+                }
             }
         },
         containerColor = MaterialTheme.colorScheme.background
@@ -140,13 +174,13 @@ fun OrderTakingScreen(
             0 -> OrderMenuScreen(
                 modifier = Modifier.padding(paddingValues),
                 tableNumber = tableNumber,
-                orderId = orderId,
+                orderId = orderId.toString(),
                 navController = navController
             )
             1 -> OrdersScreen(
                 modifier = Modifier.padding(paddingValues),
                 navController = navController,
-                orderID = orderId,
+                orderID = orderId.toString(),
                 viewModel = viewModel
             )
         }

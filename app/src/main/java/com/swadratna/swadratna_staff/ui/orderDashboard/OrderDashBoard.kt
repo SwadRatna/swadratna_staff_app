@@ -54,6 +54,7 @@ import androidx.navigation.NavController
 import com.swadratna.swadratna_staff.R
 import com.swadratna.swadratna_staff.data.remote.model.OrderListItem
 import com.swadratna.swadratna_staff.navigation.NavigationRoute
+import com.swadratna.swadratna_staff.ui.components.SearchBar
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -74,25 +75,17 @@ fun OrderDashboard(
     }
 
     Box(modifier = modifier.fillMaxSize()) {
-        Column(modifier = Modifier.fillMaxSize()) {
+        Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
             // Search Bar
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = { viewModel.updateSearchQuery(it) },
+            SearchBar(
+                hintText = "Search Menu Items...",
+                query = searchQuery,
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                placeholder = { Text("Search orders...") },
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search") },
-                trailingIcon = {
-                    if (searchQuery.isNotEmpty()) {
-                        IconButton(onClick = { viewModel.updateSearchQuery("") }) {
-                            Icon(Icons.Default.Clear, contentDescription = "Clear search")
-                        }
-                    }
+                    .fillMaxWidth(),
+                onQueryChanged = { newQuery ->
+                    viewModel.updateSearchQuery(newQuery)
                 },
-                singleLine = true,
-                shape = MaterialTheme.shapes.medium
+
             )
 
             // Filter Chips
@@ -128,7 +121,7 @@ fun OrderDashboard(
                 else -> {
                     // Show orders list
                     LazyColumn(
-                        contentPadding = PaddingValues(16.dp),
+                        contentPadding = PaddingValues(0.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp),
                         modifier = Modifier.fillMaxSize()
                     ) {
@@ -164,8 +157,7 @@ fun FilterChips(
     
     Row(
         modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp),
+            .fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         filterOptions.forEach { filter ->
@@ -292,9 +284,13 @@ fun OrderCard(order: OrderListItem, navController: NavController) {
         modifier = Modifier
             .fillMaxWidth()
             .clickable(enabled = true, onClick = {
-                navController.navigate(
-                    NavigationRoute.Bill.createRoute(order.id.toString())
-                )
+                navController.navigate(NavigationRoute.OrderTaking.createRoute(
+                    tableNumber = order.table.id,
+                    orderId = order.id,
+                    showMenuTab = false,
+                    showOrdersTab = false,
+                    defaultTab = 1
+                ))
             }),
         colors = CardDefaults.cardColors(MaterialTheme.colorScheme.surface)
     ) {
