@@ -86,7 +86,7 @@ fun SlideToConfirm(
 
         Text(
             text,
-            fontSize = 18.sp,
+            fontSize = 12.sp,
             fontWeight = FontWeight.SemiBold,
             color = Color.White.copy(alpha = textAlpha),
             modifier = Modifier.align(Alignment.Center)

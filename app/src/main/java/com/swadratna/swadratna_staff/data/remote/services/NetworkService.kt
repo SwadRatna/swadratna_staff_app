@@ -2,8 +2,6 @@ package com.swadratna.swadratna_staff.data.remote.services
 
 import com.swadratna.swadratna_staff.data.remote.model.Customer
 import com.swadratna.swadratna_staff.data.remote.model.CustomerBill
-import com.swadratna.swadratna_staff.data.remote.model.TokenRefreshRequest
-import com.swadratna.swadratna_staff.data.remote.model.TokenRefreshResponse
 import retrofit2.Response
 import retrofit2.http.*
 
@@ -18,5 +16,5 @@ data class KotItem(val menuItemId: String, val quantity: Int)
 data class ApproveBillResponse(val message: String)
 
 // 8. PATCH /menuItemAvailability/:location/:menu
-data class AvailabilityRequest(val isAvailable: Boolean)
+data class AvailabilityRequest(val is_available: Boolean)
 data class AvailabilityResponse(val message: String)

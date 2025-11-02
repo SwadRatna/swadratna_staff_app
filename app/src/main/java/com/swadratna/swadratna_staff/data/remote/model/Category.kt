@@ -36,13 +36,13 @@ data class MenuItem(
     val currency: String,
     val image: String,
     @SerializedName("is_vegetarian") val isVegetarian: Boolean,
-    @SerializedName("is_available") val isAvailable: Boolean,
+    @SerializedName("is_available") var isAvailable: Boolean,
     @SerializedName("preparation_time") val preparationTime: Int,
-    val ingredients: List<String>,
-    @SerializedName("allergen_info") val allergenInfo: List<String>,
-    @SerializedName("nutritional_info") val nutritionalInfo: NutritionalInfo,
-    @SerializedName("spicy_level") val spicyLevel: Int,
-    val tags: List<String>,
+    val ingredients: List<String>?,
+    @SerializedName("allergen_info") val allergenInfo: List<String>?,
+    @SerializedName("nutritional_info") val nutritionalInfo: NutritionalInfo?,
+    @SerializedName("spicy_level") val spicyLevel: Int?,
+    val tags: List<String>?,
     @SerializedName("display_order") val displayOrder: Int
 )
 

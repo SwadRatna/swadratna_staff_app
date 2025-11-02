@@ -1,5 +1,7 @@
 package com.swadratna.swadratna_staff.data.remote.services
 
+import com.swadratna.swadratna_staff.RegisterDeviceTokenRequest
+import com.swadratna.swadratna_staff.RegisterDeviceTokenResponse
 import com.swadratna.swadratna_staff.data.remote.model.AllOrdersResponse
 import com.swadratna.swadratna_staff.data.remote.model.CustomerBill
 import com.swadratna.swadratna_staff.data.remote.model.CustomerResponse
@@ -8,8 +10,7 @@ import com.swadratna.swadratna_staff.data.remote.model.OccupyTableRequest
 import com.swadratna.swadratna_staff.data.remote.model.OccupyTableResponse
 import com.swadratna.swadratna_staff.data.remote.model.Staff_User
 import com.swadratna.swadratna_staff.data.remote.model.TableListResponse
-import com.swadratna.swadratna_staff.data.remote.model.TokenRefreshRequest
-import com.swadratna.swadratna_staff.data.remote.model.TokenRefreshResponse
+
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.GET
@@ -20,9 +21,14 @@ import retrofit2.http.Query
 import retrofit2.http.Header
 import com.swadratna.swadratna_staff.data.remote.model.KotRequest
 import com.swadratna.swadratna_staff.data.remote.model.KotResponse
+import com.swadratna.swadratna_staff.data.remote.model.KotListResponse
+import com.swadratna.swadratna_staff.data.remote.model.KotStatusUpdateRequest
+import com.swadratna.swadratna_staff.data.remote.model.KotStatusUpdateResponse
 
 import com.swadratna.swadratna_staff.data.remote.model.OrderDetailsX
 import com.swadratna.swadratna_staff.data.remote.model.BillDetail
+import com.swadratna.swadratna_staff.data.remote.model.FreeTableRequest
+import com.swadratna.swadratna_staff.data.remote.model.FreeTableResponse
 
 data class BillActionRequest(
     val action: String,
@@ -34,9 +40,6 @@ interface ApiService {
 
     @POST("/api/v1/staff/auth/login")
     suspend fun login(@Body loginRequest: LoginRequest): Response<Staff_User>
-
-    @POST("auth/refresh-token")
-    suspend fun refreshToken(@Body request: TokenRefreshRequest): Response<TokenRefreshResponse>
 
     @GET("/api/v1/staff/tables/{locationId}")
     suspend fun getTablesByLocation(@Path("locationId") locationId: Int): Response<TableListResponse>
@@ -68,7 +71,7 @@ interface ApiService {
         @Body request: BillActionRequest
     ): Response<ApproveBillResponse>
 
-    @PATCH("menuItemAvailability/{locationId}/{menuId}")
+    @PATCH("/api/v1/staff/menu/availability/{locationId}/{menuId}")
     suspend fun updateMenuItemAvailability(
         @Path("locationId") locationId: String,
         @Path("menuId") menuId: String,
@@ -87,4 +90,29 @@ interface ApiService {
         @Query("page") page: Int,
         @Query("limit") limit: Int
     ): Response<AllOrdersResponse>
+
+    @GET("/api/v1/staff/kots")
+    suspend fun getKots(
+        @Query("location_id") locationId: Int,
+        @Query("pending_only") pendingOnly: Boolean? = null
+    ): Response<KotListResponse>
+
+    @PATCH("/api/v1/staff/kots/{kotId}/status")
+    suspend fun updateKotStatus(
+        @Path("kotId") kotId: Int,
+        @Body request: KotStatusUpdateRequest
+    ): Response<KotStatusUpdateResponse>
+
+
+    @POST("/api/v1/staff/tables/{tableId}/free")
+    suspend fun freeTheTable(
+        @Path("tableId") tableId: Int,
+        @Body request: FreeTableRequest
+    ): Response<FreeTableResponse>
+
+    @POST("/api/v1/notifications/register-device")
+    suspend fun registerDeviceToken(
+        @Body request: RegisterDeviceTokenRequest
+    ): Response<RegisterDeviceTokenResponse>
+
 }

@@ -1,4 +1,5 @@
 <resources>
     <string name="app_name">SwadRatna Staff</string>
     <string name="company_name">SwadRatna</string>
+    <string name="default_notification_channel_id">swadratna_notification_channel</string>
 </resources>

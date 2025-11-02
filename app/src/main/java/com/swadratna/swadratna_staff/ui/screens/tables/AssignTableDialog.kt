@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.outlined.Done
@@ -16,6 +17,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -30,7 +32,8 @@ import com.swadratna.swadratna_staff.R
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AssignTableDialog(
-    tableNumber: Int,
+    tableId: Int,
+    tableNumber: String,
     onDismiss: () -> Unit,
     onTableOccupied: (String) -> Unit,
     orderManagementViewModel: OrderManagementViewModel = hiltViewModel()
@@ -46,7 +49,7 @@ fun AssignTableDialog(
     LaunchedEffect(customerState) {
         if (customerState is CustomerState.Success) {
             val customer = (customerState as CustomerState.Success).customer
-            orderManagementViewModel.occupyTable(tableNumber, customer.id)
+            orderManagementViewModel.occupyTable(tableId, customer.id)
         }
     }
 
@@ -123,15 +126,10 @@ fun AssignTableDialog(
                                 value = contactInfo,
                                 onValueChange = { contactInfo = it },
                                 label = { Text("Contact Information") },
-                                placeholder = { Text("e.g. +1 (555) 123-4567 or alice@example.com") },
-                                modifier = Modifier.fillMaxWidth()
-                            )
-
-                            OutlinedTextField(
-                                value = "Table $tableNumber",
-                                onValueChange = { },
-                                readOnly = true,
-                                label = { Text("Table Assignment") },
+                                placeholder = { Text("e.g. +91 123843-4567 ") },
+                                keyboardOptions = KeyboardOptions(
+                                    keyboardType = KeyboardType.Number
+                                ),
                                 modifier = Modifier.fillMaxWidth()
                             )
 

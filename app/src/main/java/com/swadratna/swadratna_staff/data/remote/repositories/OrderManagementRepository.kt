@@ -12,6 +12,8 @@ import com.swadratna.swadratna_staff.data.remote.model.OccupyTableResponse
 import com.swadratna.swadratna_staff.data.remote.model.OrderDetailsX
 import com.swadratna.swadratna_staff.data.remote.model.TableListResponse
 import com.swadratna.swadratna_staff.data.remote.model.BillDetail
+import com.swadratna.swadratna_staff.data.remote.model.FreeTableRequest
+import com.swadratna.swadratna_staff.data.remote.model.FreeTableResponse
 import com.swadratna.swadratna_staff.data.remote.services.ApiService
 import com.swadratna.swadratna_staff.data.remote.services.ApproveBillResponse
 import com.swadratna.swadratna_staff.data.remote.services.BillActionRequest
@@ -177,6 +179,22 @@ class OrderManagementRepository @Inject constructor(
                 } ?: Result.failure(Exception("No orders found"))
             } else {
                 Result.failure(Exception("Failed to fetch all orders: ${response.message()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun freeTheTable(tableId: Int, cancelOrder: Boolean, reason: String): Result<FreeTableResponse> {
+        return try {
+            val request = FreeTableRequest(cancel_order = cancelOrder, reason = reason)
+            val response = apiService.freeTheTable(tableId, request)
+            if (response.isSuccessful) {
+                response.body()?.let { freeTableResponse ->
+                    Result.success(freeTableResponse)
+                } ?: Result.failure(Exception("Failed to free table: Empty response"))
+            } else {
+                Result.failure(Exception("Failed to free table: ${response.message()}"))
             }
         } catch (e: Exception) {
             Result.failure(e)
