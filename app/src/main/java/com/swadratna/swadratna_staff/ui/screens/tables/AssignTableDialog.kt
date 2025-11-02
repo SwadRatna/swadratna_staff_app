@@ -32,7 +32,8 @@ import com.swadratna.swadratna_staff.R
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AssignTableDialog(
-    tableNumber: Int,
+    tableId: Int,
+    tableNumber: String,
     onDismiss: () -> Unit,
     onTableOccupied: (String) -> Unit,
     orderManagementViewModel: OrderManagementViewModel = hiltViewModel()
@@ -48,7 +49,7 @@ fun AssignTableDialog(
     LaunchedEffect(customerState) {
         if (customerState is CustomerState.Success) {
             val customer = (customerState as CustomerState.Success).customer
-            orderManagementViewModel.occupyTable(tableNumber, customer.id)
+            orderManagementViewModel.occupyTable(tableId, customer.id)
         }
     }
 
@@ -129,14 +130,6 @@ fun AssignTableDialog(
                                 keyboardOptions = KeyboardOptions(
                                     keyboardType = KeyboardType.Number
                                 ),
-                                modifier = Modifier.fillMaxWidth()
-                            )
-
-                            OutlinedTextField(
-                                value = "Table $tableNumber",
-                                onValueChange = { },
-                                readOnly = true,
-                                label = { Text("Table Assignment") },
                                 modifier = Modifier.fillMaxWidth()
                             )
 

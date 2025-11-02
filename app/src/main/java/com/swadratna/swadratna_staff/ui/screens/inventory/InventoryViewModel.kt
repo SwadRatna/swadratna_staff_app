@@ -33,7 +33,7 @@ class InventoryViewModel @Inject constructor(
     // This will store ALL menu items from all categories
     private val _allMenuItems = MutableStateFlow<List<MenuItem>>(emptyList())
 
-    private val _menuItems = MutableStateFlow<List<MenuItem>>(emptyList())
+    private var _menuItems = MutableStateFlow<List<MenuItem>>(emptyList())
     val menuItems: StateFlow<List<MenuItem>> = _menuItems.asStateFlow()
 
     private val _selectedCategory = MutableStateFlow<Category?>(null)
@@ -180,6 +180,7 @@ class InventoryViewModel @Inject constructor(
                     }
                 }
                 is ApiResult.Error -> {
+                    _error.value = "Failed to update availability: ${result.exception.message}"
                     println("Error updating availability: ${result.exception.message}")
                 }
             }

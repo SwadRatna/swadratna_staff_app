@@ -13,183 +13,211 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavController
 import com.swadratna.swadratna_staff.R
 import com.swadratna.swadratna_staff.data.local.entities.StaffUser
+import com.swadratna.swadratna_staff.navigation.NavigationRoute
+import com.swadratna.swadratna_staff.ui.components.NavButton
 import com.swadratna.swadratna_staff.ui.screens.login.LoginViewModel
+import com.swadratna.swadratna_staff.ui.theme.RedGrey20
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StaffProfileScreen(
-    viewModel: ProfileViewmodel = hiltViewModel()
+    viewModel: ProfileViewmodel = hiltViewModel(),
+    navController: NavController
 ) {
     var showLogoutDialog by remember { mutableStateOf(false) }
     val staffUser by viewModel.staffUser.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
+    val isLoggedOut by viewModel.logoutSuccess.collectAsState()
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
-            .verticalScroll(rememberScrollState())
-            .background(MaterialTheme.colorScheme.background)
-    )
-    {
-        // Staff Profile Header
-        staffUser?.let { user ->
-            StaffProfileHeader(user)
-        } ?: run {
-            // Show loading or placeholder when user data is not available
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(200.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                if (isLoading) {
-                    CircularProgressIndicator()
-                } else {
-                    Text("User profile not available")
+    LaunchedEffect(isLoggedOut) {
+        if(isLoggedOut) {
+            navController.navigate(
+                NavigationRoute.Login.route
+            )
+        }
+    }
+
+    Scaffold(
+        topBar = {
+            IconButton(onClick = { navController.popBackStack()} ) {
+                Icon(Icons.Filled.Close, contentDescription = "Back")
+            }
+        },
+        containerColor = MaterialTheme.colorScheme.background
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .verticalScroll(rememberScrollState())
+                .background(MaterialTheme.colorScheme.background)
+        )
+        {
+            // Staff Profile Header
+            staffUser?.let { user ->
+                StaffProfileHeader(user)
+            } ?: run {
+                // Show loading or placeholder when user data is not available
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(200.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (isLoading) {
+                        CircularProgressIndicator()
+                    } else {
+                        Text("User profile not available")
+                    }
                 }
             }
+//
+//            Spacer(modifier = Modifier.height(24.dp))
+//
+//            // Work Information
+//            ProfileSection(title = "Work Information") {
+//                ProfileMenuItem(
+//                    icon = ImageVector.vectorResource(R.drawable.ic_badge),
+//                    title = "Employee Details",
+//                    subtitle = "ID, Department, Position",
+//                    onClick = { /* TODO: Screen not implemented yet */ }
+//                )
+//                ProfileMenuItem(
+//                    icon = ImageVector.vectorResource(R.drawable.ic_schedule),
+//                    title = "Work Schedule",
+//                    subtitle = "View your shifts & timings",
+//                    onClick = { /* TODO: Screen not implemented yet */ }
+//                )
+//                ProfileMenuItem(
+//                    icon = ImageVector.vectorResource(R.drawable.ic_calendar_month),
+//                    title = "Attendance",
+//                    subtitle = "Check-in/out history",
+//                    onClick = { /* TODO: Screen not implemented yet */ }
+//                )
+//                ProfileMenuItem(
+//                    icon = Icons.Default.DateRange,
+//                    title = "Leave Management",
+//                    subtitle = "Request & track leaves",
+//                    onClick = { /* TODO: Screen not implemented yet */ }
+//                )
+//            }
+//
+//            Spacer(modifier = Modifier.height(16.dp))
+//
+//            // Restaurant & Location
+//            ProfileSection(title = "Restaurant & Location") {
+//                ProfileMenuItem(
+//                    icon = ImageVector.vectorResource(R.drawable.ic_store),
+//                    title = "Restaurant Details",
+//                    subtitle = "Branch name & information",
+//                    onClick = { /* TODO: Screen not implemented yet */ }
+//                )
+//                ProfileMenuItem(
+//                    icon = Icons.Default.LocationOn,
+//                    title = "Branch Location",
+//                    subtitle = "Address & contact details",
+//                    onClick = { /* TODO: Screen not implemented yet */ }
+//                )
+//                ProfileMenuItem(
+//                    icon = Icons.Default.Person,
+//                    title = "Team Directory",
+//                    subtitle = "View staff & managers",
+//                    onClick = { /* TODO: Screen not implemented yet */ }
+//                )
+//            }
+//
+//            Spacer(modifier = Modifier.height(16.dp))
+//
+//            // Account & Settings
+//            ProfileSection(title = "Account & Settings") {
+//                ProfileMenuItem(
+//                    icon = Icons.Default.Person,
+//                    title = "Personal Information",
+//                    subtitle = "Update your profile details",
+//                    onClick = { /* TODO: Screen not implemented yet */ }
+//                )
+//                ProfileMenuItem(
+//                    icon = Icons.Default.Lock,
+//                    title = "Change Password",
+//                    subtitle = "Update your password",
+//                    onClick = { /* TODO: Screen not implemented yet */ }
+//                )
+//                ProfileMenuItem(
+//                    icon = Icons.Default.Notifications,
+//                    title = "Notifications",
+//                    subtitle = "Manage notification preferences",
+//                    onClick = { /* TODO: Screen not implemented yet */ }
+//                )
+//            }
+//
+//            Spacer(modifier = Modifier.height(16.dp))
+//
+//            // Support
+//            ProfileSection(title = "Help & Support") {
+//                ProfileMenuItem(
+//                    icon = ImageVector.vectorResource(R.drawable.ic_help),
+//                    title = "Help Center",
+//                    subtitle = "FAQs & troubleshooting",
+//                    onClick = { /* TODO: Screen not implemented yet */ }
+//                )
+//                ProfileMenuItem(
+//                    icon = Icons.Default.Phone,
+//                    title = "Contact Manager",
+//                    subtitle = "Get in touch with your manager",
+//                    onClick = { /* TODO: Screen not implemented yet */ }
+//                )
+//                ProfileMenuItem(
+//                    icon = Icons.Default.Info,
+//                    title = "About App",
+//                    subtitle = "Version & app information",
+//                    onClick = { /* TODO: Screen not implemented yet */ }
+//                )
+//            }
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            // Logout Button
+            Button(
+                onClick = { showLogoutDialog = true },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+                    .height(56.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.errorContainer,
+                    contentColor = MaterialTheme.colorScheme.onErrorContainer
+                ),
+                shape = MaterialTheme.shapes.medium
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_logout),
+                    contentDescription = null,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    "Logout",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+
+            Spacer(modifier = Modifier.height(32.dp))
         }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // Work Information
-        ProfileSection(title = "Work Information") {
-            ProfileMenuItem(
-                icon = ImageVector.vectorResource(R.drawable.ic_badge),
-                title = "Employee Details",
-                subtitle = "ID, Department, Position",
-                onClick = { /* TODO: Screen not implemented yet */ }
-            )
-            ProfileMenuItem(
-                icon = ImageVector.vectorResource(R.drawable.ic_schedule),
-                title = "Work Schedule",
-                subtitle = "View your shifts & timings",
-                onClick = { /* TODO: Screen not implemented yet */ }
-            )
-            ProfileMenuItem(
-                icon = ImageVector.vectorResource(R.drawable.ic_calendar_month),
-                title = "Attendance",
-                subtitle = "Check-in/out history",
-                onClick = { /* TODO: Screen not implemented yet */ }
-            )
-            ProfileMenuItem(
-                icon = Icons.Default.DateRange,
-                title = "Leave Management",
-                subtitle = "Request & track leaves",
-                onClick = { /* TODO: Screen not implemented yet */ }
-            )
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Restaurant & Location
-        ProfileSection(title = "Restaurant & Location") {
-            ProfileMenuItem(
-                icon = ImageVector.vectorResource(R.drawable.ic_store),
-                title = "Restaurant Details",
-                subtitle = "Branch name & information",
-                onClick = { /* TODO: Screen not implemented yet */ }
-            )
-            ProfileMenuItem(
-                icon = Icons.Default.LocationOn,
-                title = "Branch Location",
-                subtitle = "Address & contact details",
-                onClick = { /* TODO: Screen not implemented yet */ }
-            )
-            ProfileMenuItem(
-                icon = Icons.Default.Person,
-                title = "Team Directory",
-                subtitle = "View staff & managers",
-                onClick = { /* TODO: Screen not implemented yet */ }
-            )
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Account & Settings
-        ProfileSection(title = "Account & Settings") {
-            ProfileMenuItem(
-                icon = Icons.Default.Person,
-                title = "Personal Information",
-                subtitle = "Update your profile details",
-                onClick = { /* TODO: Screen not implemented yet */ }
-            )
-            ProfileMenuItem(
-                icon = Icons.Default.Lock,
-                title = "Change Password",
-                subtitle = "Update your password",
-                onClick = { /* TODO: Screen not implemented yet */ }
-            )
-            ProfileMenuItem(
-                icon = Icons.Default.Notifications,
-                title = "Notifications",
-                subtitle = "Manage notification preferences",
-                onClick = { /* TODO: Screen not implemented yet */ }
-            )
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Support
-        ProfileSection(title = "Help & Support") {
-            ProfileMenuItem(
-                icon = ImageVector.vectorResource(R.drawable.ic_help),
-                title = "Help Center",
-                subtitle = "FAQs & troubleshooting",
-                onClick = { /* TODO: Screen not implemented yet */ }
-            )
-            ProfileMenuItem(
-                icon = Icons.Default.Phone,
-                title = "Contact Manager",
-                subtitle = "Get in touch with your manager",
-                onClick = { /* TODO: Screen not implemented yet */ }
-            )
-            ProfileMenuItem(
-                icon = Icons.Default.Info,
-                title = "About App",
-                subtitle = "Version & app information",
-                onClick = { /* TODO: Screen not implemented yet */ }
-            )
-        }
-
-        Spacer(modifier = Modifier.height(32.dp))
-
-        // Logout Button
-        Button(
-            onClick = { showLogoutDialog = true },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp)
-                .height(56.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.errorContainer,
-                contentColor = MaterialTheme.colorScheme.onErrorContainer
-            ),
-            shape = MaterialTheme.shapes.medium
-        ) {
-            Icon(
-                imageVector = Icons.Default.ExitToApp,
-                contentDescription = null,
-                modifier = Modifier.size(24.dp)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                "Logout",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold
-            )
-        }
-
-        Spacer(modifier = Modifier.height(32.dp))
     }
+
+
 
     // Logout Confirmation Dialog
     if (showLogoutDialog) {
@@ -236,7 +264,7 @@ fun StaffProfileHeader(staffUser: StaffUser) {
             .fillMaxWidth()
             .padding(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer
+            containerColor = MaterialTheme.colorScheme.surface
         ),
         shape = MaterialTheme.shapes.large
     ) {
