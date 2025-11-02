@@ -11,6 +11,8 @@ import androidx.core.app.NotificationCompat
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import androidx.core.net.toUri
+import androidx.lifecycle.ProcessLifecycleOwner
+import androidx.lifecycle.Lifecycle
 
 class MyFirebaseMessagingService : FirebaseMessagingService() {
 
@@ -69,7 +71,26 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
             else -> body
         }
 
-        sendNotification(title, notificationBody, data["deeplink"],type, orderId, tableNumber, priority)
+        // Check if app is in foreground
+        if (isAppInForeground()) {
+            Log.d(TAG, "App is in foreground, sending intent to MainActivity for in-app notification")
+            // Send intent to MainActivity to show in-app notification
+            val intent = Intent(this, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                putExtra("notification_type", type)
+                orderId?.let { putExtra("orderId", it.toIntOrNull()) }
+                tableNumber?.let { putExtra("tableNumber", it.toIntOrNull()) }
+                putExtra("notification_title", title)
+                putExtra("notification_body", notificationBody)
+                putExtra("from_notification", true)
+                putExtra("in_app_notification", true) // Flag to indicate this is for in-app notification
+                data["deeplink"]?.let { putExtra("deeplink", it) } // Pass the deep link from API
+            }
+            startActivity(intent)
+        } else {
+            Log.d(TAG, "App is in background, sending system notification")
+            sendNotification(title, notificationBody, data["deeplink"],type, orderId, tableNumber, priority)
+        }
     }
 
     private fun sendNotification(
@@ -147,5 +168,9 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
 
     private fun sendNotification(title: String, body: String) {
         sendNotification(title, body, "general")
+    }
+
+    private fun isAppInForeground(): Boolean {
+        return ProcessLifecycleOwner.get().lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)
     }
 }
