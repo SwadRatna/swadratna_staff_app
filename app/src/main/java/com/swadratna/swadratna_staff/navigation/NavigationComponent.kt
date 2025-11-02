@@ -3,6 +3,7 @@ package com.swadratna.swadratna_staff.navigation
 import android.content.Context
 import android.util.Log
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -17,6 +18,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
@@ -30,6 +34,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
+import androidx.core.net.toUri
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
@@ -39,6 +44,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import androidx.navigation.navDeepLink
 import com.swadratna.swadratna_staff.MainActivity
 import com.swadratna.swadratna_staff.ui.screens.inventory.InventoryScreen
 import com.swadratna.swadratna_staff.ui.screens.orders.OrderTakingScreen
@@ -50,6 +56,8 @@ import com.swadratna.swadratna_staff.ui.screens.orders.PayBillScreen
 import com.swadratna.swadratna_staff.ui.screens.profile.StaffProfileScreen
 import com.swadratna.swadratna_staff.ui.screens.kot.KotListScreen
 import com.swadratna.swadratna_staff.ui.theme.fontFamily
+import com.swadratna.swadratna_staff.ui.components.InAppNotificationCard
+import com.swadratna.swadratna_staff.ui.components.LocalNotificationManager
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -115,6 +123,10 @@ fun NavigationComponent(
         }
     }
 
+    // Get notification manager and current notification
+    val notificationManager = LocalNotificationManager.current
+    val currentNotification by notificationManager.currentNotification.collectAsState()
+
     Scaffold(
         topBar = {
             if (shouldShowBottomBar) {
@@ -174,7 +186,10 @@ fun NavigationComponent(
         },
         containerColor = MaterialTheme.colorScheme.background,
     ) { innerPadding ->
-        NavHost(
+        Box(
+            modifier = Modifier.fillMaxSize()
+        ) {
+            NavHost(
             modifier = Modifier.
             consumeWindowInsets(innerPadding)
                 .padding(innerPadding),
@@ -223,6 +238,14 @@ fun NavigationComponent(
                         type = NavType.IntType
                         defaultValue = 0 
                     }
+                ),
+                deepLinks = listOf(
+                    navDeepLink {
+                        uriPattern = "swadratna://order?tableNumber={tableNumber}&orderId={orderId}"
+                    },
+                    navDeepLink {
+                        uriPattern = "https://swadratna.com/order?tableNumber={tableNumber}&orderId={orderId}"
+                    }
                 )
             ) { backStackEntry ->
                 val tableNumber = backStackEntry.arguments?.getInt("tableNumber") ?: 0
@@ -249,6 +272,82 @@ fun NavigationComponent(
             }
             composable(route = NavigationRoute.KotList.route) {
                 KotListScreen(navController = navController)
+            }
+        }
+        
+            // Show in-app notification card if there's a current notification
+            currentNotification?.let { notification ->
+                InAppNotificationCard(
+                    title = notification.title,
+                    message = notification.message,
+                    type = notification.type,
+                    orderId = notification.orderId,
+                    tableNumber = notification.tableNumber,
+                    onViewOrderClick = {
+                        notification.deepLink?.let { deepLink ->
+                            // Parse the deep link URI to extract parameters
+                            try {
+                                val uri = deepLink.toUri()
+                                val tableNumber = uri.getQueryParameter("tableNumber")?.toIntOrNull()
+                                val orderId = uri.getQueryParameter("orderId")?.toIntOrNull()
+                                
+                                if (tableNumber != null && orderId != null) {
+                                    // Use the extracted parameters to navigate
+                                    val route = "${NavigationRoute.OrderTaking.route}/$tableNumber/$orderId?showMenuTab=true&showOrdersTab=true&defaultTab=1"
+                                    navController.navigate(route) {
+                                        popUpTo(navController.graph.findStartDestination().id) {
+                                            inclusive = false
+                                        }
+                                        launchSingleTop = true
+                                    }
+                                } else {
+                                    // If parsing fails, try direct navigation (for other deep link formats)
+                                    navController.navigate(deepLink) {
+                                        popUpTo(navController.graph.findStartDestination().id) {
+                                            inclusive = false
+                                        }
+                                        launchSingleTop = true
+                                    }
+                                }
+                            } catch (e: Exception) {
+                                Log.e("NavigationComponent", "Error parsing deep link: $deepLink", e)
+                                // Fallback to manual route construction
+                                if (notification.type == "new_order" || notification.type == "payment_completed") {
+                                    notification.orderId?.let { orderId ->
+                                        notification.tableNumber?.let { tableNumber ->
+                                            val route = "${NavigationRoute.OrderTaking.route}/$tableNumber/$orderId?showMenuTab=true&showOrdersTab=true&defaultTab=1"
+                                            navController.navigate(route) {
+                                                popUpTo(navController.graph.findStartDestination().id) {
+                                                    inclusive = false
+                                                }
+                                                launchSingleTop = true
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        } ?: run {
+                            // Fallback to manual route construction if no deep link is provided
+                            if (notification.type == "new_order" || notification.type == "payment_completed") {
+                                notification.orderId?.let { orderId ->
+                                    notification.tableNumber?.let { tableNumber ->
+                                        val route = "${NavigationRoute.OrderTaking.route}/$tableNumber/$orderId?showMenuTab=true&showOrdersTab=true&defaultTab=1"
+                                        navController.navigate(route) {
+                                            popUpTo(navController.graph.findStartDestination().id) {
+                                                inclusive = false
+                                            }
+                                            launchSingleTop = true
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    onDismiss = {
+                        notificationManager.dismissNotification()
+                    },
+                    modifier = Modifier.align(Alignment.Center)
+                )
             }
         }
     }

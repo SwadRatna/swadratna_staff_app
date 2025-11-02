@@ -8,6 +8,9 @@ import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleObserver
+import androidx.lifecycle.OnLifecycleEvent
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -17,12 +20,15 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import com.google.firebase.messaging.FirebaseMessaging
 import com.swadratna.swadratna_staff.data.remote.repositories.AuthRepository
 import com.swadratna.swadratna_staff.data.remote.repositories.TokenRepository
 import com.swadratna.swadratna_staff.navigation.NavigationComponent
 import com.swadratna.swadratna_staff.navigation.NavigationRoute
+import com.swadratna.swadratna_staff.ui.components.InAppNotificationManager
+import com.swadratna.swadratna_staff.ui.components.InAppNotificationProvider
 import com.swadratna.swadratna_staff.ui.theme.SwadRatna_StaffTheme
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
@@ -58,6 +64,9 @@ class MainActivity : ComponentActivity() {
     lateinit var authRepository: AuthRepository
     @Inject
     lateinit var tokenRepository: TokenRepository
+    
+    private lateinit var notificationManager: InAppNotificationManager
+    private var isAppInForeground = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -74,6 +83,24 @@ class MainActivity : ComponentActivity() {
         
         // Register for FCM token
         tokenRepository.FirebaseTokenRegisteration()
+        
+        // Initialize notification manager
+        notificationManager = InAppNotificationManager()
+        
+        // Set up lifecycle observer to track app foreground state
+        ProcessLifecycleOwner.get().lifecycle.addObserver(object : LifecycleObserver {
+            @OnLifecycleEvent(Lifecycle.Event.ON_START)
+            fun onEnterForeground() {
+                isAppInForeground = true
+                Log.d("MainActivity", "App entered foreground")
+            }
+
+            @OnLifecycleEvent(Lifecycle.Event.ON_STOP)
+            fun onEnterBackground() {
+                isAppInForeground = false
+                Log.d("MainActivity", "App entered background")
+            }
+        })
         
         setContent {
             SwadRatna_StaffTheme(
@@ -97,7 +124,9 @@ class MainActivity : ComponentActivity() {
                     }
 
                     startDestination?.let { destination ->
-                        NavigationComponent(startDestination = destination)
+                        InAppNotificationProvider(notificationManager = notificationManager) {
+                            NavigationComponent(startDestination = destination)
+                        }
                     }
                 }
             }
@@ -134,13 +163,83 @@ class MainActivity : ComponentActivity() {
             val notificationType = it.getStringExtra("notification_type")
             val orderId = it.getIntExtra("order_id", -1)
             val tableNumber = it.getIntExtra("table_number", -1)
+            val inAppNotification = it.getBooleanExtra("in_app_notification", false)
+            val notificationTitle = it.getStringExtra("notification_title")
+            val notificationBody = it.getStringExtra("notification_body")
+            val deepLink = it.getStringExtra("deeplink")
             
             if (notificationType != null) {
-                Log.d("MainActivity", "Notification received - Type: $notificationType, OrderId: $orderId, TableNumber: $tableNumber")
-                // Handle notification navigation
-                handleDeepLinkNavigation(notificationType, orderId, tableNumber)
+                Log.d("MainActivity", "Notification received - Type: $notificationType, OrderId: $orderId, TableNumber: $tableNumber, InApp: $inAppNotification, DeepLink: $deepLink")
+                
+                // If this is specifically an in-app notification from Firebase service
+                if (inAppNotification) {
+                    showInAppNotificationWithTitle(notificationType, orderId, tableNumber, notificationTitle, notificationBody, deepLink)
+                } else {
+                    // Check if app is in foreground (already open)
+                    if (isAppInForeground()) {
+                        // Show in-app notification instead of deep link navigation
+                        showInAppNotification(notificationType, orderId, tableNumber, deepLink)
+                    } else {
+                        // App is in background, use deep link navigation
+                        handleDeepLinkNavigation(notificationType, orderId, tableNumber)
+                    }
+                }
             }
         }
+    }
+    
+    private fun isAppInForeground(): Boolean {
+        return this.isAppInForeground
+    }
+    
+    private fun showInAppNotification(type: String, orderId: Int, tableNumber: Int, deepLink: String? = null) {
+        val notification = com.swadratna.swadratna_staff.ui.components.InAppNotification(
+            id = System.currentTimeMillis().toString(),
+            title = when (type) {
+                "new_order" -> "New Order"
+                "payment_completed" -> "Payment Completed"
+                "order_ready" -> "Order Ready"
+                else -> "Notification"
+            },
+            message = when (type) {
+                "new_order" -> "New order received for table ${if (tableNumber != -1) tableNumber else "N/A"}"
+                "payment_completed" -> "Payment completed for table ${if (tableNumber != -1) tableNumber else "N/A"}"
+                "order_ready" -> "Order ${if (orderId != -1) "#$orderId" else ""} is ready"
+                else -> "You have a new notification"
+            },
+            type = type,
+            orderId = if (orderId != -1) orderId else null,
+            tableNumber = if (tableNumber != -1) tableNumber else null,
+            deepLink = deepLink
+        )
+        
+        notificationManager.showNotification(notification)
+        Log.d("MainActivity", "In-app notification shown: ${notification.title}")
+    }
+    
+    private fun showInAppNotificationWithTitle(type: String, orderId: Int, tableNumber: Int, title: String?, body: String?, deepLink: String? = null) {
+        val notification = com.swadratna.swadratna_staff.ui.components.InAppNotification(
+            id = System.currentTimeMillis().toString(),
+            title = title ?: when (type) {
+                "new_order" -> "New Order"
+                "payment_completed" -> "Payment Completed"
+                "order_ready" -> "Order Ready"
+                else -> "Notification"
+            },
+            message = body ?: when (type) {
+                "new_order" -> "New order received for table ${if (tableNumber != -1) tableNumber else "N/A"}"
+                "payment_completed" -> "Payment completed for table ${if (tableNumber != -1) tableNumber else "N/A"}"
+                "order_ready" -> "Order ${if (orderId != -1) "#$orderId" else ""} is ready"
+                else -> "You have a new notification"
+            },
+            type = type,
+            orderId = if (orderId != -1) orderId else null,
+            tableNumber = if (tableNumber != -1) tableNumber else null,
+            deepLink = deepLink
+        )
+        
+        notificationManager.showNotification(notification)
+        Log.d("MainActivity", "In-app notification shown with custom title: ${notification.title}")
     }
 
     private fun handleDeepLinkIntent(intent: Intent?) {
