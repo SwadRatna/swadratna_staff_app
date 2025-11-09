@@ -34,7 +34,6 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
-import androidx.core.net.toUri
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
@@ -287,7 +286,7 @@ fun NavigationComponent(
                         notification.deepLink?.let { deepLink ->
                             // Parse the deep link URI to extract parameters
                             try {
-                                val uri = deepLink.toUri()
+                                val uri = android.net.Uri.parse(deepLink)
                                 val tableNumber = uri.getQueryParameter("tableNumber")?.toIntOrNull()
                                 val orderId = uri.getQueryParameter("orderId")?.toIntOrNull()
                                 
