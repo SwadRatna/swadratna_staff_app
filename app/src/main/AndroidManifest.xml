@@ -4,6 +4,16 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <!-- Bluetooth permissions for thermal printer -->
+    <uses-permission android:name="android.permission.BLUETOOTH" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
+
+    <!-- File permissions for PDF generation -->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
 
     <application
@@ -28,6 +38,26 @@
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+
+            <intent-filter android:autoVerify="true"
+                tools:ignore="AppLinkSplitToWebAndCustom">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <!-- Deep link format: swadratna://order?tableNumber=1&orderId=123 -->
+                <data android:scheme="swadratna" />
+                <data android:host="order"
+                    tools:ignore="AppLinkUrlError" />
+
+                <!-- Alternative format for web links -->
+                <data android:scheme="https"
+                      android:host="swadratna.com"
+                      android:pathPrefix="/order" />
+            </intent-filter>
+
+            <intent-filter android:autoVerify="true"
+                tools:ignore="AppLinkSplitToWebAndCustom">
             
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />

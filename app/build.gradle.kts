@@ -84,6 +84,8 @@ dependencies {
     // EncryptedSharedPreferences (from the security-crypto library) for secure token storage
     implementation(libs.androidx.security.crypto)
 
+    // Thermal Printer for ESC/POS printing
+    implementation("com.github.DantSu:ESCPOS-ThermalPrinter-Android:3.3.0")
     
     // Room
     implementation(libs.room.runtime)

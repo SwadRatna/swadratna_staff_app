@@ -1,5 +1,9 @@
 package com.swadratna.swadratna_staff.ui.screens.orders
 
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -18,6 +22,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -30,6 +35,10 @@ import com.swadratna.swadratna_staff.data.remote.model.BillLineItem // Assuming 
 import com.swadratna.swadratna_staff.data.remote.model.StaffRole
 import com.swadratna.swadratna_staff.ui.components.SlideToConfirm
 import com.swadratna.swadratna_staff.ui.theme.Red80
+import com.swadratna.swadratna_staff.utils.BillPrinterUtil
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 
 @Composable
@@ -115,6 +124,10 @@ fun PayBillScreen(
     viewModel: OrderManagementViewModel = hiltViewModel()
 ) {
     val billDetailsState by viewModel.billDetailsState.collectAsStateWithLifecycle()
+    val currentStaffUser by viewModel.currentStaffUser.collectAsStateWithLifecycle()
+    val currentBill by viewModel.currentBill.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
 
     var selectedTipAmount by remember { mutableStateOf<Double?>(null) }
     var showCustomTipDialog by remember { mutableStateOf(false) }
@@ -126,10 +139,33 @@ fun PayBillScreen(
     // Default/Zero values for calculation until data loads
     val totalAmount = (billDetailsState as? BillDetailsState.Success)?.billDetail?.bill?.totalAmount ?: 0.0
     val totalPayable = totalAmount + (selectedTipAmount ?: 0.0)
+    
+    // Print bill function
+    fun printBill() {
+        billDetail?.let { bill ->
+            val billText = BillPrinterUtil.generateBillText(
+                billDetail = bill,
+                storeAddress = currentStaffUser?.location?.address,
+                storeName = "SWAD RATNA",
+                storePhone = currentStaffUser?.location?.location_mobile_number,
+                customerName = currentBill?.customerName,
+                customerMobile = null, // TODO: Get customer mobile number
+                cashierName = currentStaffUser?.username
+            )
+            
+            // Use the new printWithChooser method to show printer selection dialog
+            BillPrinterUtil.printWithChooser(context, billText) { success, message ->
+                Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+            }
+        } ?: run {
+            Toast.makeText(context, "Bill details not available", Toast.LENGTH_SHORT).show()
+        }
+    }
 
     LaunchedEffect(orderId) {
         orderId?.let {
             viewModel.getBillDetails(it)
+            viewModel.findBill(it)
         }
     }
 
@@ -147,16 +183,17 @@ fun PayBillScreen(
                 },
                 actions = {
                     Button(
-                        onClick = { /* TODO: Implement Table Change/Info */ },
+                        onClick = { printBill() },
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
                         ),
                         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
                         modifier = Modifier.height(36.dp),
-                        shape = RoundedCornerShape(8.dp)
+                        shape = RoundedCornerShape(8.dp),
+                        enabled = billDetail != null
                     ) {
-                        Text("OrderId: ${billDetail?.bill?.orderId}", fontWeight = FontWeight.Medium)
+                        Text("🖨️ Print Bill", fontWeight = FontWeight.Medium)
                     }
                     Spacer(modifier = Modifier.width(8.dp))
                 }

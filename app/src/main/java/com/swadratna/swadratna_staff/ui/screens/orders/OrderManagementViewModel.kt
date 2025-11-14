@@ -196,6 +196,14 @@ class OrderManagementViewModel @Inject constructor(
             initialValue = null
         )
 
+    // StateFlow to hold the current staff user
+    val currentStaffUser: StateFlow<com.swadratna.swadratna_staff.data.local.entities.StaffUser?> = staffUserDao.getLoggedInStaffUser()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = null
+        )
+
     init {
         viewModelScope.launch {
             staffLocationId.collect { locationId ->
