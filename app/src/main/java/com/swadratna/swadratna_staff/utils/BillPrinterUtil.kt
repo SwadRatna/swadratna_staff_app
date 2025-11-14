@@ -1,11 +1,19 @@
 package com.swadratna.swadratna_staff.utils
 
+import android.app.AlertDialog
+import android.bluetooth.BluetoothDevice
 import android.content.Context
+import android.content.pm.PackageManager
 import android.graphics.Paint
 import android.graphics.pdf.PdfDocument
+import android.os.Build
 import android.os.Environment
+import android.widget.Toast
+import androidx.core.content.ContextCompat
 import com.dantsu.escposprinter.EscPosPrinter
 import com.dantsu.escposprinter.connection.bluetooth.BluetoothPrintersConnections
+import com.dantsu.escposprinter.connection.bluetooth.BluetoothConnection
+import com.dantsu.escposprinter.exceptions.EscPosConnectionException
 import com.swadratna.swadratna_staff.data.remote.model.Address
 import com.swadratna.swadratna_staff.data.remote.model.BillDetail
 import java.io.File
@@ -314,6 +322,123 @@ class BillPrinterUtil {
                 outputFormat.format(date ?: Date())
             } catch (e: Exception) {
                 dateString
+            }
+        }
+
+        /* ------------------------------------------------------ */
+        /*  Built-in Bluetooth-printer chooser                    */
+        /* ------------------------------------------------------ */
+
+        /**
+         * Simple holder so we can show friendly names in the picker
+         */
+        data class PrinterDevice(
+            val name: String,
+            val address: String,
+            val connection: com.dantsu.escposprinter.connection.bluetooth.BluetoothConnection
+        )
+
+        /**
+         * Return list of already-paired printers
+         */
+        private fun getPairedPrinters(): List<PrinterDevice> {
+            val printers = mutableListOf<PrinterDevice>()
+            
+            try {
+                // Get all Bluetooth connections
+                val bluetoothConnections = BluetoothPrintersConnections().getList()
+                
+                if (bluetoothConnections != null) {
+                    for (conn in bluetoothConnections) {
+                        val device = conn.getDevice()
+                        val deviceName = device.name ?: "Unknown"
+                        
+                        // Include all paired devices, not just those with specific device classes
+                        // This helps with "Inner printer" and other non-standard printers
+                        printers.add(PrinterDevice(
+                            name = deviceName,
+                            address = device.address,
+                            connection = conn
+                        ))
+                    }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+            
+            return printers
+        }
+
+        /**
+         * Show a system AlertDialog with paired printers; print when user picks one.
+         * Usage:
+         *   BillPrinterUtil.printWithChooser(context, billText) { ok, msg ->
+         *       Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+         *   }
+         */
+        fun printWithChooser(
+            context: Context,
+            billText: String,
+            onDone: (success: Boolean, msg: String) -> Unit
+        ) {
+            // Check Bluetooth permissions first
+            if (!hasBluetoothPermissions(context)) {
+                onDone(false, "Bluetooth permissions required. Please grant permissions in settings.")
+                return
+            }
+
+            val printers = getPairedPrinters()
+            if (printers.isEmpty()) {
+                onDone(false, "No paired printer found. Please pair one in Android settings.")
+                return
+            }
+
+            val names = printers.map { "${it.name}  (${it.address})" }.toTypedArray()
+            AlertDialog.Builder(context)
+                .setTitle("Select Printer")
+                .setItems(names) { _, which ->
+                    val chosen = printers[which]
+                    try {
+                        // First, attempt to connect the chosen connection
+                        val connectedConnection = chosen.connection.connect()
+                        
+                        // Create printer with the connected connection
+                        val printer = EscPosPrinter(
+                            connectedConnection,
+                            203,
+                            PAPER_WIDTH_MM.toFloat(),
+                            CHAR_WIDTH
+                        )
+                        
+                        // Print and cut
+                        printer.printFormattedTextAndCut(billText)
+                        
+                        // Disconnect when done
+                        printer.disconnectPrinter()
+                        
+                        onDone(true, "Printed successfully")
+                    } catch (e: EscPosConnectionException) {
+                        e.printStackTrace()
+                        onDone(false, "Connection failed: ${e.message}. Make sure printer is powered on and within range.")
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                        onDone(false, "Print failed: ${e.message}")
+                    }
+                }
+                .setNegativeButton("Cancel") { _, _ -> onDone(false, "Cancelled") }
+                .show()
+        }
+
+        /**
+         * Check if the app has required Bluetooth permissions
+         */
+        private fun hasBluetoothPermissions(context: Context): Boolean {
+            return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                ContextCompat.checkSelfPermission(context, android.Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED &&
+                ContextCompat.checkSelfPermission(context, android.Manifest.permission.BLUETOOTH_SCAN) == PackageManager.PERMISSION_GRANTED
+            } else {
+                ContextCompat.checkSelfPermission(context, android.Manifest.permission.BLUETOOTH) == PackageManager.PERMISSION_GRANTED &&
+                ContextCompat.checkSelfPermission(context, android.Manifest.permission.BLUETOOTH_ADMIN) == PackageManager.PERMISSION_GRANTED
             }
         }
     }

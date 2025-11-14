@@ -143,59 +143,19 @@ fun PayBillScreen(
     // Print bill function
     fun printBill() {
         billDetail?.let { bill ->
-            coroutineScope.launch {
-                try {
-                    // First try Bluetooth printing
-                    val bluetoothSuccess = withContext(Dispatchers.IO) {
-                        BillPrinterUtil.printViaBluetooth(context, BillPrinterUtil.generateBillText(
-                            billDetail = bill,
-                            storeAddress = currentStaffUser?.location?.address,
-                            storeName = "SWAD RATNA",
-                            storePhone = currentStaffUser?.location?.location_mobile_number,
-                            customerName = currentBill?.customerName,
-                            customerMobile = null, // TODO: Get customer mobile number
-                            cashierName = currentStaffUser?.username
-                        ))
-                    }
-                    
-                    if (bluetoothSuccess) {
-                        Toast.makeText(context, "Bill printed successfully!", Toast.LENGTH_SHORT).show()
-                    } else {
-                        // Fallback to PDF generation
-                        val pdfFile = withContext(Dispatchers.IO) {
-                            BillPrinterUtil.generatePdfBill(
-                                context = context,
-                                billDetail = bill,
-                                storeAddress = currentStaffUser?.location?.address,
-                                storeName = "SWAD RATNA",
-                                storePhone = currentStaffUser?.location?.location_mobile_number,
-                                customerName = currentBill?.customerName,
-                                customerMobile = null, // TODO: Get customer mobile number
-                                cashierName = currentStaffUser?.username
-                            )
-                        }
-                        
-                        if (pdfFile != null) {
-                            Toast.makeText(context, "Bill saved as PDF: ${pdfFile.name}", Toast.LENGTH_LONG).show()
-                            
-                            // Open PDF for preview
-                            val intent = Intent(Intent.ACTION_VIEW).apply {
-                                setDataAndType(Uri.fromFile(pdfFile), "application/pdf")
-                                flags = Intent.FLAG_ACTIVITY_NO_HISTORY
-                            }
-                            
-                            try {
-                                context.startActivity(intent)
-                            } catch (e: Exception) {
-                                Toast.makeText(context, "PDF saved to Downloads folder", Toast.LENGTH_SHORT).show()
-                            }
-                        } else {
-                            Toast.makeText(context, "Failed to generate bill", Toast.LENGTH_SHORT).show()
-                        }
-                    }
-                } catch (e: Exception) {
-                    Toast.makeText(context, "Error printing bill: ${e.message}", Toast.LENGTH_SHORT).show()
-                }
+            val billText = BillPrinterUtil.generateBillText(
+                billDetail = bill,
+                storeAddress = currentStaffUser?.location?.address,
+                storeName = "SWAD RATNA",
+                storePhone = currentStaffUser?.location?.location_mobile_number,
+                customerName = currentBill?.customerName,
+                customerMobile = null, // TODO: Get customer mobile number
+                cashierName = currentStaffUser?.username
+            )
+            
+            // Use the new printWithChooser method to show printer selection dialog
+            BillPrinterUtil.printWithChooser(context, billText) { success, message ->
+                Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
             }
         } ?: run {
             Toast.makeText(context, "Bill details not available", Toast.LENGTH_SHORT).show()
