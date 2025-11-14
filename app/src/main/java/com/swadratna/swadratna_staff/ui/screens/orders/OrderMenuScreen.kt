@@ -155,7 +155,7 @@ fun OrderMenuScreen(
         if (showExpandedOrderSummary) {
             OrderSummaryDialog(
                 currentOrderItems = currentOrderItems,
-                menuItems = filteredMenuItems,
+                menuItems = menuItemsMap.values.flatten(), // Use all available menu items instead of filtered ones
                 onDismiss = { showExpandedOrderSummary = false },
                 onOrderClick = { 
                     showExpandedOrderSummary = false
@@ -348,7 +348,7 @@ fun MenuItemOrderCard(
                         Icon(
                             Icons.Default.Add,
                             contentDescription = "Add",
-                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                            tint = MaterialTheme.colorScheme.surface,
                             modifier = Modifier.size(20.dp)
                         )
                     }
@@ -369,6 +369,7 @@ fun OrderSummaryDialog(
     onRemoveItem: (Int) -> Unit
 ) {
     AlertDialog(
+        containerColor = MaterialTheme.colorScheme.background,
         onDismissRequest = onDismiss,
         title = { Text("Order Summary") },
         text = {
@@ -381,7 +382,7 @@ fun OrderSummaryDialog(
                     if (menuItem != null) {
                         Card(
                             modifier = Modifier.fillMaxWidth(),
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
                         ) {
                             Row(
                                 modifier = Modifier

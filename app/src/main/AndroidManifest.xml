@@ -58,16 +58,15 @@
 
             <intent-filter android:autoVerify="true"
                 tools:ignore="AppLinkSplitToWebAndCustom">
+            
+            <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-
-                <!-- Deep link format: swadratna://order?tableNumber=1&orderId=123 -->
-                <data android:scheme="swadratna" />
-                <data android:host="order"
-                    tools:ignore="AppLinkUrlError" />
-
-                <!-- Alternative format for web links -->
+                
+                <data android:scheme="swadratna"
+                      android:host="order" />
+                
                 <data android:scheme="https"
                       android:host="swadratna.com"
                       android:pathPrefix="/order" />
