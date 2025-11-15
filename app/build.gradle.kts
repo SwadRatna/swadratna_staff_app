@@ -99,6 +99,7 @@ dependencies {
     // Firebase Cloud Messaging
     implementation("com.google.firebase:firebase-messaging")
 
+    implementation("com.google.accompanist:accompanist-systemuicontroller:0.34.0")
 
     // Testing
     testImplementation(libs.junit)
