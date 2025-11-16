@@ -1,18 +1,15 @@
 package com.swadratna.swadratna_staff.utils
 
 import android.app.AlertDialog
-import android.bluetooth.BluetoothDevice
 import android.content.Context
 import android.content.pm.PackageManager
 import android.graphics.Paint
 import android.graphics.pdf.PdfDocument
 import android.os.Build
 import android.os.Environment
-import android.widget.Toast
 import androidx.core.content.ContextCompat
 import com.dantsu.escposprinter.EscPosPrinter
 import com.dantsu.escposprinter.connection.bluetooth.BluetoothPrintersConnections
-import com.dantsu.escposprinter.connection.bluetooth.BluetoothConnection
 import com.dantsu.escposprinter.exceptions.EscPosConnectionException
 import com.swadratna.swadratna_staff.data.remote.model.Address
 import com.swadratna.swadratna_staff.data.remote.model.BillDetail
@@ -35,6 +32,81 @@ class BillPrinterUtil {
         fun pad(text: String, length: Int): String {
             return if (text.length >= length) text.substring(0, length)
             else text + " ".repeat(length - text.length)
+        }
+
+        data class KotPrintingItem(
+            val menu_name: String,
+            val quantity: Int,
+        )
+
+        /**
+         * Generates ESC/POS formatted KOT text.
+         * Layout mirrors the sample image: header, customer/table, items with Sl.No & Qty, total.
+         */
+        fun generateKOT(
+            kotItems: List<KotPrintingItem>,
+            headerLeft: String? = null, // e.g., "Token: 1000071" or a KOT number
+            tableLabel: String? = null, // e.g., "Table 1"
+            customerName: String? = null,
+            createdAt: Date = Date()
+        ): String {
+            val sb = StringBuilder()
+
+            // Widths tuned for 58mm paper (~32 chars)
+            val colSlNo = 6
+            val colName = 20
+            val colQtyKot = 6
+
+            // Header
+            sb.append("[C]<b>KOT</b>\n\n")
+
+            val dateStr = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(createdAt)
+            val left = headerLeft?.takeIf { it.isNotBlank() } ?: ""
+            sb.append("[L]$left[R]$dateStr\n")
+
+            customerName?.let { name ->
+                sb.append("Customer : ${name}\n")
+            }
+
+            tableLabel?.let { tbl ->
+                sb.append("Table No. : ${tbl}\n")
+            }
+
+            sb.append("${"-".repeat(32)}\n")
+
+            // Column headers
+            sb.append(
+                pad("Sl.No", colSlNo) +
+                pad("Item Name", colName) +
+                pad("Qty.", colQtyKot) + "\n"
+            )
+
+            // Items
+            kotItems.forEachIndexed { index, item ->
+                val qtyStr = String.format("%3s", item.quantity.toString())
+                val formatted = formatItemName24(item.menu_name, maxLine = colName)
+
+                sb.append(
+                    pad((index + 1).toString(), colSlNo) +
+                    pad(formatted.line1, colName) +
+                    pad(qtyStr, colQtyKot) + "\n"
+                )
+
+                formatted.line2?.let { line2 ->
+                    sb.append(
+                        pad("", colSlNo) +
+                        pad(line2, colName) +
+                        pad("", colQtyKot) + "\n"
+                    )
+                }
+            }
+
+            sb.append("${"-".repeat(32)}\n")
+
+            val totalItems = kotItems.sumOf { it.quantity }
+            sb.append("[R]Total Items : ${totalItems}")
+
+            return sb.toString()
         }
 
         /**

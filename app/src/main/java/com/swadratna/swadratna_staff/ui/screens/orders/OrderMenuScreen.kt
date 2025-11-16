@@ -32,8 +32,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import android.widget.Toast
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
 import com.swadratna.swadratna_staff.data.remote.model.Category
 import com.swadratna.swadratna_staff.data.remote.model.MenuItem
 import com.swadratna.swadratna_staff.navigation.NavigationRoute
@@ -41,6 +45,9 @@ import com.swadratna.swadratna_staff.ui.components.CategoryItem
 import com.swadratna.swadratna_staff.ui.components.SearchBar
 import com.swadratna.swadratna_staff.ui.components.SlideToConfirm
 import com.swadratna.swadratna_staff.ui.theme.Red80
+import com.swadratna.swadratna_staff.utils.BillPrinterUtil
+import kotlin.collections.component1
+import kotlin.collections.component2
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -664,6 +671,8 @@ fun OrderConfirmationDialog(
     onDismiss: () -> Unit,
     onResetState: () -> Unit
 ) {
+    val context = LocalContext.current
+    var kotSnapshot by remember { mutableStateOf<List<BillPrinterUtil.Companion.KotPrintingItem>>(emptyList()) }
     val allMenuItems =
         remember(menuItemsMap) { menuItemsMap.values.flatten().associateBy { it.id } }
     val totalItems = currentOrderItems.values.sum()
@@ -742,6 +751,20 @@ fun OrderConfirmationDialog(
                     }
 
                     is OrderConfirmationState.Success -> {
+                        // Print KOT once when confirmation succeeds using snapshot taken before clearing
+                        LaunchedEffect(orderConfirmationState) {
+                            val kotText = BillPrinterUtil.generateKOT(
+                                kotItems = kotSnapshot,
+                                headerLeft = "Token: $orderId",
+                                tableLabel = "Table $tableNumber"
+                            )
+                            BillPrinterUtil.printWithChooser(
+                                context,
+                                kotText
+                            ) { ok, msg ->
+                                Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                            }
+                        }
                         Text(
                             "Order Confirmed!",
                             color = MaterialTheme.colorScheme.primary,
@@ -775,7 +798,22 @@ fun OrderConfirmationDialog(
 
                         SlideToConfirm(
                             text = "Slide to Confirm Order",
-                            onConfirmation = onConfirmOrder,
+                            onConfirmation = {
+                                // Snapshot current items before ViewModel clears them
+                                val allMenuItems = menuItemsMap.values.flatten().associateBy { it.id }
+                                kotSnapshot = currentOrderItems.entries
+                                    .filter { it.value > 0 }
+                                    .mapNotNull { (itemId, qty) ->
+                                        val mi = allMenuItems[itemId]
+                                        mi?.let {
+                                            BillPrinterUtil.Companion.KotPrintingItem(
+                                                menu_name = it.name,
+                                                quantity = qty
+                                            )
+                                        }
+                                    }
+                                onConfirmOrder()
+                            },
                             trackColor = Red80,
                             thumbColor = Color.White,
                             modifier = Modifier
