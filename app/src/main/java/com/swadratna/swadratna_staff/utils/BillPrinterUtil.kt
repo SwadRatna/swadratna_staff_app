@@ -26,7 +26,16 @@ class BillPrinterUtil {
 
     companion object {
         private const val PAPER_WIDTH_MM = 58 // Standard thermal printer width
-        private const val CHAR_WIDTH = 32 // Characters per line for 58mm paper
+        private const val CHAR_WIDTH = 32 // Characters per line for 58mm paperval
+        val colItem = 15
+        val colQty = 6
+        val colPrice = 7
+        val colAmt = 5
+
+        fun pad(text: String, length: Int): String {
+            return if (text.length >= length) text.substring(0, length)
+            else text + " ".repeat(length - text.length)
+        }
 
         /**
          * Generates ESC/POS formatted bill text with store and customer information
@@ -64,12 +73,10 @@ class BillPrinterUtil {
                 sb.append("[C]${phone}\n")
             }
 
-            // Business Details - Centered
             sb.append("[C]GSTIN: 29AADCR0331P1ZL\n")
             sb.append("[C]FSSAI Lic No. 11221334000882\n")
             sb.append("\n")
 
-            // Customer Information
             customerName?.let { name ->
                 sb.append("Name: ${name}")
                 customerMobile?.let { mobile ->
@@ -89,31 +96,38 @@ class BillPrinterUtil {
             sb.append("Token No.: ${bill.orderId}\n")
             sb.append("\n")
 
-            // Separator line
             sb.append("${"-".repeat(32)}\n")
 
-            // Items Header with proper spacing
-            sb.append("Item${" ".repeat(16)}Qty. Price Amount\n")
-            sb.append("${"-".repeat(32)}\n")
+            sb.append(pad("Items", colItem) +
+                    pad("Qty", colQty) +
+                    pad("Rate", colPrice) +
+                    pad("Amt", colAmt) + "\n"
+            )
 
-            // Line Items with better formatting
             lineItems.forEach { item ->
-                val itemName = truncateText(item.menuItem.name, 20)
                 val qty = item.quantity.toString()
-                val unitPrice = item.price / item.quantity
+                val unitPrice = item.price
                 val totalPrice = item.totalPrice
 
-                // Item name
-                sb.append("${itemName}\n")
-
-                // Quantity, unit price, and total with proper alignment
                 val qtyStr = String.format("%3s", qty)
-                val priceStr = String.format("%6.2f", unitPrice)
-                val totalStr = String.format("%7.2f", totalPrice)
-                
-                sb.append("${" ".repeat(20)}${qtyStr} ${priceStr} ${totalStr}\n")
+                val priceStr = String.format("%6.2f", unitPrice).replace(".00", "")
+                val totalStr = String.format("%7.2f", totalPrice).replace(".00", "")
 
-                // Add instructions if available
+                val formatted = formatItemName24(item.menuItem.name)
+
+                sb.append(
+                    formatted.line1 +
+                            " ".repeat(15 - formatted.line1.length.coerceAtMost(15)) +
+                            qtyStr + "   " +
+                            priceStr + "   " +
+                            totalStr +
+                            "\n"
+                )
+
+                if (formatted.line2 != null) {
+                    sb.append(formatted.line2 + "\n")
+                }
+
                 item.instructions?.let { instructions ->
                     if (instructions.isNotBlank()) {
                         sb.append("  Note: ${truncateText(instructions, 28)}\n")
@@ -121,42 +135,35 @@ class BillPrinterUtil {
                 }
             }
 
-            // Separator line
             sb.append("${"-".repeat(32)}\n")
 
-            // Totals section with proper alignment
             val totalQty = lineItems.sumOf { it.quantity }
             val subTotalStr = String.format("%.2f", bill.subTotal)
             sb.append("${" ".repeat(8)}Total Qty: ${totalQty}${" ".repeat(3)}Sub: ${subTotalStr}\n")
             sb.append("${" ".repeat(34)}Total\n")
-            
-            // Tax breakdown
+
             val sgstAmount = String.format("%.2f", bill.taxAmount / 2)
             val cgstAmount = String.format("%.2f", bill.taxAmount / 2)
             sb.append("${" ".repeat(20)}SGST 2.5%${" ".repeat(3)}${sgstAmount}\n")
             sb.append("${" ".repeat(20)}CGST 2.5%${" ".repeat(3)}${cgstAmount}\n")
 
-            // Service charge if applicable
             if (bill.serviceCharge > 0) {
                 val serviceChargeStr = String.format("%.2f", bill.serviceCharge)
                 sb.append("${" ".repeat(15)}Service Charge${" ".repeat(3)}${serviceChargeStr}\n")
             }
 
-            // Round off if applicable
             if (bill.discountAmount > 0) {
                 val roundOffStr = String.format("%.2f", -bill.discountAmount.toDouble())
                 sb.append("${" ".repeat(18)}Round off${" ".repeat(3)}${roundOffStr}\n")
             }
 
-            // Grand Total - Prominent
             val grandTotalStr = String.format("%.2f", bill.totalAmount)
             sb.append("${" ".repeat(10)}Grand Total ₹ ${grandTotalStr}\n")
             sb.append("\n")
 
-            // Footer - Centered
             sb.append("${" ".repeat(20)}Thank You,\n")
             sb.append("${" ".repeat(20)}Visit Again!\n")
-            sb.append("\n\n\n")
+            sb.append("\n\n")
 
             return sb.toString()
         }
@@ -432,7 +439,7 @@ class BillPrinterUtil {
         /**
          * Check if the app has required Bluetooth permissions
          */
-        private fun hasBluetoothPermissions(context: Context): Boolean {
+        fun hasBluetoothPermissions(context: Context): Boolean {
             return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 ContextCompat.checkSelfPermission(context, android.Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED &&
                 ContextCompat.checkSelfPermission(context, android.Manifest.permission.BLUETOOTH_SCAN) == PackageManager.PERMISSION_GRANTED

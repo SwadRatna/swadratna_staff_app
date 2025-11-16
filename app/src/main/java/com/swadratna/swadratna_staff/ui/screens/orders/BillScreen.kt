@@ -36,6 +36,8 @@ import com.swadratna.swadratna_staff.data.remote.model.StaffRole
 import com.swadratna.swadratna_staff.ui.components.SlideToConfirm
 import com.swadratna.swadratna_staff.ui.theme.Red80
 import com.swadratna.swadratna_staff.utils.BillPrinterUtil
+import com.swadratna.swadratna_staff.utils.BillPrinterUtil.Companion.generatePdfBill
+import com.swadratna.swadratna_staff.utils.BillPrinterUtil.Companion.hasBluetoothPermissions
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -136,11 +138,9 @@ fun PayBillScreen(
 
     val billDetail = (billDetailsState as? BillDetailsState.Success)?.billDetail
 
-    // Default/Zero values for calculation until data loads
     val totalAmount = (billDetailsState as? BillDetailsState.Success)?.billDetail?.bill?.totalAmount ?: 0.0
     val totalPayable = totalAmount + (selectedTipAmount ?: 0.0)
     
-    // Print bill function
     fun printBill() {
         billDetail?.let { bill ->
             val billText = BillPrinterUtil.generateBillText(
@@ -153,7 +153,6 @@ fun PayBillScreen(
                 cashierName = currentStaffUser?.username
             )
             
-            // Use the new printWithChooser method to show printer selection dialog
             BillPrinterUtil.printWithChooser(context, billText) { success, message ->
                 Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
             }
@@ -348,7 +347,7 @@ fun SuccessBillLayout(
                     }
                 }
                 Text(
-                    "${item.quantity} x ₹${"%.0f".format(item.price / item.quantity)}", // Calculate unit price
+                    "${item.quantity} x ₹${"%.0f".format(item.price)}",
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Medium
                 )
