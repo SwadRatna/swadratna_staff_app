@@ -11,10 +11,10 @@ data class OrderDetails(
     @SerializedName("table_id") val tableId: Int,
     @SerializedName("location_id") val locationId: Int,
     @SerializedName("restaurant_id") val restaurantId: Int,
-    @SerializedName("total_value") val totalValue: Int,
+    @SerializedName("total_value") val totalValue: Double,
     @SerializedName("order_date") val orderDate: String,
-    @SerializedName("order_value") val orderValue: Int,
-    val discount: Int,
+    @SerializedName("order_value") val orderValue: Double,
+    val discount: Double,
     @SerializedName("order_status") val orderStatus: String
 )
 

@@ -16,7 +16,7 @@ data class Bill(
     @SerializedName("sub_total") val subTotal: Double,
     @SerializedName("tax_amount") val taxAmount: Double,
     @SerializedName("service_charge") val serviceCharge: Double,
-    @SerializedName("discount_amount") val discountAmount: Int,
+    @SerializedName("discount_amount") val discountAmount: Double,
     @SerializedName("total_amount") val totalAmount: Double,
     val status: String,
     @SerializedName("created_by_id") val createdById: Int

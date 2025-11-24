@@ -5,8 +5,8 @@ data class Item(
     val instructions: String,
     val menu_item: MenuItem,
     val menu_item_id: Int,
-    val price: Int,
+    val price: Double,
     val quantity: Int,
     val status: String,
-    val total_price: Int
+    val total_price: Double
 )

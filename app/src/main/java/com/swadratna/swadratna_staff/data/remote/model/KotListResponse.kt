@@ -3,7 +3,7 @@ package com.swadratna.swadratna_staff.data.remote.model
 data class KotListResponse(
     val kots: List<KotItemX>,
     val location_id: Int,
-    val total: Int
+    val total: Double
 )
 
 data class KotStatusUpdateResponse(
@@ -38,7 +38,7 @@ data class MenuItemX(
     val is_vegetarian: Boolean,
     val name: String,
     val preparation_time: Int,
-    val price: Int,
+    val price: Double,
     val tenant_id: Int,
     val updated_at: String
 )

@@ -36,8 +36,6 @@ import com.swadratna.swadratna_staff.data.remote.model.StaffRole
 import com.swadratna.swadratna_staff.ui.components.SlideToConfirm
 import com.swadratna.swadratna_staff.ui.theme.Red80
 import com.swadratna.swadratna_staff.utils.BillPrinterUtil
-import com.swadratna.swadratna_staff.utils.BillPrinterUtil.Companion.generatePdfBill
-import com.swadratna.swadratna_staff.utils.BillPrinterUtil.Companion.hasBluetoothPermissions
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -138,9 +136,11 @@ fun PayBillScreen(
 
     val billDetail = (billDetailsState as? BillDetailsState.Success)?.billDetail
 
+    // Default/Zero values for calculation until data loads
     val totalAmount = (billDetailsState as? BillDetailsState.Success)?.billDetail?.bill?.totalAmount ?: 0.0
     val totalPayable = totalAmount + (selectedTipAmount ?: 0.0)
     
+    // Print bill function
     fun printBill() {
         billDetail?.let { bill ->
             val billText = BillPrinterUtil.generateBillText(
@@ -153,6 +153,7 @@ fun PayBillScreen(
                 cashierName = currentStaffUser?.username
             )
             
+            // Use the new printWithChooser method to show printer selection dialog
             BillPrinterUtil.printWithChooser(context, billText) { success, message ->
                 Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
             }
@@ -171,7 +172,21 @@ fun PayBillScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Pay Bill", fontWeight = FontWeight.SemiBold) },
+                title = {
+                    Column {
+                        Text(
+                            text = billDetail?.bill?.billNumber?.let { "Bill #$it" } ?: "Pay Bill",
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        if (billDetail != null) {
+                            Text(
+                                text = "Table ${billDetail.bill.tableId} • Token ${billDetail.bill.orderId}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color.Gray
+                            )
+                        }
+                    }
+                },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(
@@ -192,7 +207,7 @@ fun PayBillScreen(
                         shape = RoundedCornerShape(8.dp),
                         enabled = billDetail != null
                     ) {
-                        Text("🖨️ Print Bill", fontWeight = FontWeight.Medium)
+                        Text("🖨️ Print", fontWeight = FontWeight.Medium)
                     }
                     Spacer(modifier = Modifier.width(8.dp))
                 }
@@ -322,10 +337,19 @@ fun SuccessBillLayout(
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
     ) {
 
-        // 2. My Orders Section (Line Items)
+        // Header info chips
         item {
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                InfoChip(text = "Bill #${bill.billNumber}")
+                InfoChip(text = "Table ${bill.tableId}")
+                InfoChip(text = "Token ${bill.orderId}")
+            }
             Spacer(modifier = Modifier.height(16.dp))
-            Text("My Orders", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Text("Items", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.height(8.dp))
         }
         items(lineItems) { item: BillLineItem ->
@@ -338,7 +362,7 @@ fun SuccessBillLayout(
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     // NOTE: isVeg is not in your current data structure, assuming true
-                    VegNonVegIndicator(isVeg = item.menuItem.isVegetarian ?: false , modifier = Modifier.padding(end = 8.dp))
+                    VegNonVegIndicator(isVeg = item.menuItem.isVegetarian, modifier = Modifier.padding(end = 8.dp))
                     Column {
                         Text(item.menuItem.name, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
                         item.instructions?.let {
@@ -346,42 +370,103 @@ fun SuccessBillLayout(
                         }
                     }
                 }
-                Text(
-                    "${item.quantity} x ₹${"%.0f".format(item.price)}",
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Medium
-                )
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(
+                        "₹${"%.2f".format(item.totalPrice)}",
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        "${item.quantity} x ₹${"%.2f".format(item.totalPrice / item.quantity)}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.Gray
+                    )
+                }
             }
         }
         item {
             HorizontalDivider(color = Color(0xFFEEEEEE), modifier = Modifier.padding(vertical = 8.dp))
         }
 
-
+        // Tip chips
         item {
-            Text("Your bill details", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Text("Tip", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
             Spacer(modifier = Modifier.height(8.dp))
-
-            bill.let { bill ->
-                BillDetailRow("Item total", bill.subTotal) // Using total as item total placeholder
-                BillDetailRow("CGST", bill.taxAmount/2, prefix = "+ ")
-                BillDetailRow("SGST", bill.taxAmount/2 , prefix = "+ ")
-                BillDetailRow("Service Charge", bill.serviceCharge , prefix = "+ ")
-
-            }
+            TipChipsRow(
+                selectedTipAmount = selectedTipAmount,
+                onTipSelected = onTipSelected,
+                onCustomTipClicked = onCustomTipClicked
+            )
             Spacer(modifier = Modifier.height(16.dp))
-            HorizontalDivider(color = Color.Black, thickness = 1.dp)
-            Spacer(modifier = Modifier.height(16.dp))
+        }
 
+        // Summary card
+        item {
+            SummaryCard(bill = bill, totalPayable = totalPayable)
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+    }
+}
+
+@Composable
+private fun InfoChip(text: String) {
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = Color(0xFFF4F4F4),
+        modifier = Modifier.height(28.dp)
+    ) {
+        Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 12.dp)) {
+            Text(text = text, style = MaterialTheme.typography.bodySmall, color = Color.Black)
+        }
+    }
+}
+
+@Composable
+private fun SummaryCard(bill: com.swadratna.swadratna_staff.data.remote.model.Bill, totalPayable: Double) {
+    Card(shape = RoundedCornerShape(12.dp), colors = CardDefaults.cardColors(containerColor = Color(0xFFFAFAFA))) {
+        Column(Modifier.fillMaxWidth().padding(16.dp)) {
+            Text("Summary", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.height(8.dp))
+            BillDetailRow("Item total", bill.subTotal)
+            BillDetailRow("CGST", bill.taxAmount / 2, prefix = "+ ")
+            BillDetailRow("SGST", bill.taxAmount / 2, prefix = "+ ")
+            if (bill.serviceCharge > 0) BillDetailRow("Service Charge", bill.serviceCharge, prefix = "+ ")
+            if (bill.discountAmount > 0) BillDetailRow("Discount", bill.discountAmount.toDouble(), prefix = "- ")
+            Spacer(modifier = Modifier.height(12.dp))
+            HorizontalDivider(color = Color(0xFFDDDDDD))
+            Spacer(modifier = Modifier.height(12.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("Total Amount", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                Text("₹${"%.0f".format(totalPayable)}", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                Text("Payable Amount", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                Text("₹${"%.2f".format(totalPayable)}", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
             }
-            Spacer(modifier = Modifier.height(16.dp))
         }
+    }
+}
+
+@Composable
+private fun TipChipsRow(
+    selectedTipAmount: Double?,
+    onTipSelected: (Double?) -> Unit,
+    onCustomTipClicked: () -> Unit
+) {
+    val tips = listOf(null, 20.0, 50.0, 100.0)
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        tips.forEach { amount ->
+            TipOptionChip(
+                amount = amount,
+                text = if (amount == null) "No Tip" else null,
+                isSelected = selectedTipAmount == amount,
+                onClick = { onTipSelected(amount) }
+            )
+        }
+        TipOptionChip(
+            text = "Custom",
+            isSelected = false,
+            onClick = onCustomTipClicked
+        )
     }
 }
