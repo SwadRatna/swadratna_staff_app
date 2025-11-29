@@ -1,6 +1,5 @@
 package com.swadratna.swadratna_staff.ui.screens.orders
 
-import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
@@ -14,8 +13,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowForward
-import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -25,6 +25,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -32,31 +33,25 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.swadratna.swadratna_staff.data.remote.model.BILL_STATUS
 import com.swadratna.swadratna_staff.data.remote.model.BillDetail
-import com.swadratna.swadratna_staff.data.remote.model.BillLineItem // Assuming this is your data class
 import com.swadratna.swadratna_staff.data.remote.model.StaffRole
-import com.swadratna.swadratna_staff.ui.components.SlideToConfirm
-import com.swadratna.swadratna_staff.ui.theme.Red80
 import com.swadratna.swadratna_staff.utils.BillPrinterUtil
 import com.swadratna.swadratna_staff.utils.rememberBluetoothPermissionLauncher
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-
+import java.text.SimpleDateFormat
+import java.util.Locale
+import java.util.TimeZone
 
 @Composable
 fun VegNonVegIndicator(isVeg: Boolean, modifier: Modifier = Modifier) {
-    // NOTE: isVeg must be determined from your BillLineItem data structure.
-    val color = if (isVeg) Color(0xFF4CAF50) else Color(0xFFD32F2F)
+    val color = if (isVeg) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
     Box(
         modifier = modifier
-            .size(10.dp)
-            .clip(CircleShape)
-            .border(1.dp, color, CircleShape),
+            .size(14.dp)
+            .border(1.dp, color, RoundedCornerShape(4.dp)),
         contentAlignment = Alignment.Center
     ) {
         Box(
             modifier = Modifier
-                .size(6.dp)
+                .size(8.dp)
                 .clip(CircleShape)
                 .background(color)
         )
@@ -64,59 +59,21 @@ fun VegNonVegIndicator(isVeg: Boolean, modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun TipOptionChip(
-    amount: Double? = null,
-    text: String? = null,
-    isSelected: Boolean,
-    onClick: () -> Unit
-) {
-    val backgroundColor = if (isSelected) Color(0xFF42A5F5) else Color(0xFFF5F5F5)
-    val textColor = if (isSelected) Color.White else Color.Black
-    val borderColor = if (isSelected) Color(0xFF42A5F5) else Color.Transparent
-
-    Surface(
-        shape = RoundedCornerShape(8.dp),
-        color = backgroundColor,
-        modifier = Modifier
-            .height(40.dp)
-            .padding(horizontal = 4.dp)
-            .border(1.dp, borderColor, RoundedCornerShape(8.dp))
-            .clickable(onClick = onClick)
-    ) {
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier.fillMaxSize()
-        ) {
-            Text(
-                text = text ?: "₹${"%.0f".format(amount)}",
-                color = textColor,
-                fontWeight = FontWeight.Medium,
-                fontSize = 16.sp
-            )
-        }
-    }
-}
-
-@Composable
-fun BillDetailRow(label: String, amount: Double, prefix: String = "", modifier: Modifier = Modifier) {
-    Row(
-        modifier = modifier.fillMaxWidth().padding(vertical = 4.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(label, style = MaterialTheme.typography.bodyLarge, color = Color.Gray)
+fun InfoColumn(label: String, value: String) {
+    Column {
         Text(
-            "$prefix₹${"%.1f".format(amount)}",
-            style = MaterialTheme.typography.bodyLarge,
-            fontWeight = FontWeight.Medium
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurface
         )
     }
 }
-
-
-// =========================================================================================
-// !!! ADAPTED MAIN SCREEN COMPOSABLE !!!
-// =========================================================================================
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -129,26 +86,31 @@ fun PayBillScreen(
     val currentStaffUser by viewModel.currentStaffUser.collectAsStateWithLifecycle()
     val currentBill by viewModel.currentBill.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    val coroutineScope = rememberCoroutineScope()
-
-    var selectedTipAmount by remember { mutableStateOf<Double?>(null) }
-    var showCustomTipDialog by remember { mutableStateOf(false) }
-    var customTipInput by remember { mutableStateOf("") }
     val role by viewModel.staffRole.collectAsStateWithLifecycle()
+    val loading by viewModel.loading.collectAsStateWithLifecycle()
 
     var showPaymentDialog by remember { mutableStateOf(false) }
     var paymentMode by remember { mutableStateOf("cash") }
     var transactionId by remember { mutableStateOf("") }
     var paymentNotes by remember { mutableStateOf("") }
     var amountPaidInput by remember { mutableStateOf("") }
-    var statusMenuExpanded by remember { mutableStateOf(false) }
+    
+    // Post Payment Dialog State
+    var showPostPaymentDialog by remember { mutableStateOf(false) }
+    var postPaymentPhoneNumber by remember { mutableStateOf<String?>(null) }
+    var postPaymentAmount by remember { mutableStateOf(0.0) }
 
     val billDetail = (billDetailsState as? BillDetailsState.Success)?.billDetail
-
-    // Default/Zero values for calculation until data loads
-    val totalAmount = (billDetailsState as? BillDetailsState.Success)?.billDetail?.bill?.totalAmount ?: 0.0
-    val totalPayable = totalAmount + (selectedTipAmount ?: 0.0)
     
+    // Handle Payment Success
+    LaunchedEffect(Unit) {
+        viewModel.paymentSuccess.collect { response ->
+            showPostPaymentDialog = true
+            postPaymentPhoneNumber = response.invoice?.customer_phone
+            postPaymentAmount = response.bill.total_amount
+        }
+    }
+
     // Print bill function
     val performPrint = rememberBluetoothPermissionLauncher {
         billDetail?.let { bill ->
@@ -158,11 +120,10 @@ fun PayBillScreen(
                 storeName = "SWAD RATNA",
                 storePhone = currentStaffUser?.location?.location_mobile_number,
                 customerName = currentBill?.customerName,
-                customerMobile = null, // TODO: Get customer mobile number
+                customerMobile = null, 
                 cashierName = currentStaffUser?.username
             )
             
-            // Use the new printWithChooser method to show printer selection dialog
             BillPrinterUtil.printWithChooser(context, billText) { success, message ->
                 Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
             }
@@ -180,202 +141,318 @@ fun PayBillScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
+            CenterAlignedTopAppBar(
                 title = {
-                    Column {
-                        Text(
-                            text = billDetail?.bill?.billNumber?.let { "Bill #$it" } ?: "Pay Bill",
-                            fontWeight = FontWeight.SemiBold
-                        )
-                        if (billDetail != null) {
-                            Text(
-                                text = "Table ${billDetail.bill.tableId} • Token ${billDetail.bill.orderId}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = Color.Gray
-                            )
-                        }
-                    }
+                    Text(
+                        text = "Bill Details",
+                        fontWeight = FontWeight.SemiBold
+                    )
                 },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = "Close Bill"
+                            imageVector = Icons.Default.ArrowBack,
+                            contentDescription = "Back"
                         )
                     }
                 },
                 actions = {
-                    Button(
-                        onClick = { performPrint() },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary,
-                            contentColor = MaterialTheme.colorScheme.onPrimary
-                        ),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
-                        modifier = Modifier.height(36.dp),
-                        shape = RoundedCornerShape(8.dp),
-                        enabled = billDetail != null
-                    ) {
-                        Text("🖨️ Print", fontWeight = FontWeight.Medium)
+                    IconButton(onClick = { performPrint() }, enabled = billDetail != null) {
+                        Text("🖨️", fontSize = 20.sp)
                     }
-                    Spacer(modifier = Modifier.width(8.dp))
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.Transparent,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface
+                )
             )
         },
         bottomBar = {
-            if(role == StaffRole.WAITER.roleName) {
-                Button(
-                    onClick = { /* TODO: Handle Make Payment */ },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(64.dp)
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.Black),
-                    shape = RoundedCornerShape(12.dp),
-                    enabled = billDetailsState is BillDetailsState.Success // Enable only when data is loaded
+            if (billDetail != null) {
+                Surface(
+                    tonalElevation = 8.dp,
+                    shadowElevation = 8.dp
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text("₹${"%.0f".format(totalPayable)}", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("Request Bill Approval", fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Icon(Icons.Default.ArrowForward, contentDescription = "Make Payment", tint = Color.White)
-                        }
-                    }
-                }
-            } else if(role== StaffRole.MANAGER.roleName){
-                val current = billDetail?.bill?.status?.lowercase()
-                val isAccepted = current == com.swadratna.swadratna_staff.data.remote.model.BILL_STATUS.ACCEPTED.value.lowercase()
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp)
-                ) {
-                    Text("Status: ${billDetail?.bill?.status ?: ""}", style = MaterialTheme.typography.titleMedium)
-                    Spacer(modifier = Modifier.height(8.dp))
-                    ExposedDropdownMenuBox(
-                        expanded = statusMenuExpanded,
-                        onExpandedChange = { statusMenuExpanded = !statusMenuExpanded }
-                    ) {
-                        OutlinedTextField(
-                            value = billDetail?.bill?.status ?: "",
-                            onValueChange = {},
-                            readOnly = true,
-                            label = { Text("Change Status") },
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = statusMenuExpanded) },
-                            modifier = Modifier
-                                .menuAnchor()
-                                .fillMaxWidth()
-                        )
-                        ExposedDropdownMenu(
-                            expanded = statusMenuExpanded,
-                            onDismissRequest = { statusMenuExpanded = false }
-                        ) {
-                            if (!isAccepted) {
-                                DropdownMenuItem(
-                                    text = { Text(BILL_STATUS.ACCEPTED.value) },
-                                    onClick = {
-                                        statusMenuExpanded = false
-                                        billDetail?.bill?.id?.let { viewModel.approveBill("ACCEPT", "", it) }
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        if (role == StaffRole.MANAGER.roleName) {
+                            val status = billDetail.bill.status.lowercase()
+                            val isAccepted = status == BILL_STATUS.ACCEPTED.value.lowercase()
+                            val isPending = status == BILL_STATUS.PENDING.value.lowercase()
+                            val isHold = status == BILL_STATUS.Hold.value.lowercase()
+                            
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                if (isPending || isHold) {
+                                    Button(
+                                        onClick = { viewModel.approveBill("HOLD", "", billDetail.bill.id, orderId) },
+                                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary),
+                                        modifier = Modifier.weight(1f),
+                                        enabled = !loading
+                                    ) {
+                                        Text("Hold")
                                     }
-                                )
-                                DropdownMenuItem(
-                                    text = { Text(BILL_STATUS.Hold.value) },
-                                    onClick = {
-                                        statusMenuExpanded = false
-                                        billDetail?.bill?.id?.let { viewModel.approveBill("HOLD", "", it) }
+                                    Button(
+                                        onClick = { viewModel.approveBill("REJECT", "", billDetail.bill.id, orderId) },
+                                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                                        modifier = Modifier.weight(1f),
+                                        enabled = !loading
+                                    ) {
+                                        Text("Reject")
                                     }
-                                )
-                                DropdownMenuItem(
-                                    text = { Text(BILL_STATUS.REJECTED.value) },
-                                    onClick = {
-                                        statusMenuExpanded = false
-                                        billDetail?.bill?.id?.let { viewModel.approveBill("REJECT", "", it) }
+                                    Button(
+                                        onClick = { viewModel.approveBill("ACCEPT", "", billDetail.bill.id, orderId) },
+                                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                                        modifier = Modifier.weight(1f),
+                                        enabled = !loading
+                                    ) {
+                                        Text("Accept")
                                     }
-                                )
-                            } else {
-                                DropdownMenuItem(
-                                    text = { Text("Mark as ${BILL_STATUS.PAID.value}") },
-                                    onClick = {
-                                        statusMenuExpanded = false
-                                        amountPaidInput = "${billDetail?.bill?.totalAmount ?: 0.0}"
-                                        showPaymentDialog = true
+                                } else {
+                                    // If already accepted or paid or rejected (but mainly if accepted)
+                                    Button(
+                                        onClick = {
+                                            amountPaidInput = "${billDetail.bill.totalAmount}"
+                                            showPaymentDialog = true
+                                        },
+                                        enabled = isAccepted && !loading, // Enable only if accepted and not loading
+                                        modifier = Modifier.fillMaxWidth().height(50.dp),
+                                        shape = RoundedCornerShape(8.dp)
+                                    ) {
+                                        if (loading) {
+                                            CircularProgressIndicator(
+                                                modifier = Modifier.size(24.dp),
+                                                color = MaterialTheme.colorScheme.onPrimary
+                                            )
+                                        } else {
+                                            Text(if(status == BILL_STATUS.PAID.value.lowercase()) "Bill Paid" else "Mark as Paid")
+                                        }
                                     }
-                                )
+                                }
+                            }
+                        } else if (role == StaffRole.WAITER.roleName) {
+                            // Waiter view
+                            val status = billDetail.bill.status
+                            Button(
+                                onClick = { /* Request approval logic if needed */ },
+                                modifier = Modifier.fillMaxWidth(),
+                                enabled = false
+                            ) {
+                                Text("Status: $status")
                             }
                         }
                     }
                 }
             }
-
         }
     ) { paddingValues ->
-        when (billDetailsState) {
-            is BillDetailsState.Loading -> {
-                Box(modifier = Modifier.fillMaxSize().padding(paddingValues), contentAlignment = Alignment.Center) {
+        Box(modifier = Modifier.padding(paddingValues)) {
+            if (billDetailsState is BillDetailsState.Loading) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
                 }
-            }
-            is BillDetailsState.Success -> {
-                val billDetail = (billDetailsState as BillDetailsState.Success).billDetail
-                SuccessBillLayout(
-                    billDetail = billDetail,
-                    paddingValues = paddingValues,
-                    totalPayable = totalPayable,
-                    selectedTipAmount = selectedTipAmount,
-                    onTipSelected = { selectedTipAmount = it },
-                    onCustomTipClicked = { showCustomTipDialog = true }
-                )
-            }
-            is BillDetailsState.Error -> {
-                Box(modifier = Modifier.fillMaxSize().padding(paddingValues), contentAlignment = Alignment.Center) {
-                    Text(text = "Error: ${(billDetailsState as BillDetailsState.Error).message}", color = MaterialTheme.colorScheme.error)
+            } else if (billDetail != null) {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    // Status Badge
+                    item {
+                        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                            Surface(
+                                color = when(billDetail.bill.status.lowercase()) {
+                                    BILL_STATUS.PAID.value.lowercase() -> MaterialTheme.colorScheme.primaryContainer
+                                    BILL_STATUS.REJECTED.value.lowercase() -> MaterialTheme.colorScheme.errorContainer
+                                    BILL_STATUS.ACCEPTED.value.lowercase() -> MaterialTheme.colorScheme.secondaryContainer
+                                    else -> MaterialTheme.colorScheme.surfaceVariant
+                                },
+                                shape = RoundedCornerShape(16.dp)
+                            ) {
+                                Text(
+                                    text = billDetail.bill.status.uppercase(),
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = when(billDetail.bill.status.lowercase()) {
+                                        BILL_STATUS.PAID.value.lowercase() -> MaterialTheme.colorScheme.onPrimaryContainer
+                                        BILL_STATUS.REJECTED.value.lowercase() -> MaterialTheme.colorScheme.onErrorContainer
+                                        BILL_STATUS.ACCEPTED.value.lowercase() -> MaterialTheme.colorScheme.onSecondaryContainer
+                                        else -> MaterialTheme.colorScheme.onSurfaceVariant
+                                    },
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
+
+                    // Info Grid
+                    item {
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                    InfoColumn("Bill No", "#${billDetail.bill.billNumber}")
+                                    InfoColumn("Table", "${billDetail.bill.tableId}")
+                                }
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                    val date = try {
+                                        val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
+                                        sdf.timeZone = TimeZone.getTimeZone("UTC")
+                                        val parsed = sdf.parse(billDetail.bill.createdAt)
+                                        val out = SimpleDateFormat("dd MMM, hh:mm a", Locale.getDefault())
+                                        out.format(parsed ?: java.util.Date())
+                                    } catch (e: Exception) {
+                                        billDetail.bill.createdAt
+                                    }
+                                    InfoColumn("Date", date)
+                                    InfoColumn("Server", currentStaffUser?.username ?: "Unknown")
+                                }
+                            }
+                        }
+                    }
+
+                    item { HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant) }
+
+                    // Items List Header
+                    item {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("Item", modifier = Modifier.weight(0.5f), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("Qty", modifier = Modifier.weight(0.15f), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
+                            Text("Price", modifier = Modifier.weight(0.15f), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.End)
+                            Text("Amount", modifier = Modifier.weight(0.2f), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.End)
+                        }
+                    }
+
+                    items(billDetail.lineItems) { item ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(modifier = Modifier.weight(0.5f), verticalAlignment = Alignment.CenterVertically) {
+                                VegNonVegIndicator(isVeg = item.menuItem.isVegetarian)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = item.menuItem.name,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    maxLines = 2,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                            Text(
+                                text = "${item.quantity}",
+                                modifier = Modifier.weight(0.15f),
+                                style = MaterialTheme.typography.bodyMedium,
+                                textAlign = TextAlign.Center,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = "₹${"%.0f".format(item.price)}",
+                                modifier = Modifier.weight(0.15f),
+                                style = MaterialTheme.typography.bodyMedium,
+                                textAlign = TextAlign.End,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = "₹${"%.0f".format(item.totalPrice)}",
+                                modifier = Modifier.weight(0.2f),
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Medium,
+                                textAlign = TextAlign.End,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    }
+
+                    item { HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant) }
+
+                    // Summary
+                    item {
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text("Subtotal",
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        style = MaterialTheme.typography.bodyMedium)
+                                    Text("₹${"%.2f".format(billDetail.bill.subTotal)}",
+                                        color = MaterialTheme.colorScheme.onSurface
+                                        , style = MaterialTheme.typography.bodyMedium)
+                                }
+                                if (billDetail.bill.discountAmount > 0) {
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Text("Discount",
+                                            color = MaterialTheme.colorScheme.onSurface
+                                            , style = MaterialTheme.typography.bodyMedium)
+                                        Text("-₹${"%.2f".format(billDetail.bill.discountAmount)}",
+                                            color = MaterialTheme.colorScheme.onSurface,
+                                            style = MaterialTheme.typography.bodyMedium)
+                                    }
+                                }
+                                if (billDetail.bill.taxAmount > 0) {
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Text("Taxes",
+                                            color = MaterialTheme.colorScheme.onSurface,
+                                            style = MaterialTheme.typography.bodyMedium)
+                                        Text("₹${"%.2f".format(billDetail.bill.taxAmount)}",
+                                            color = MaterialTheme.colorScheme.onSurface,
+                                            style = MaterialTheme.typography.bodyMedium)
+                                    }
+                                }
+                                Spacer(modifier = Modifier.height(8.dp))
+                                HorizontalDivider(color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f), thickness = 0.5.dp)
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text("Grand Total",
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                    Text("₹${"%.2f".format(billDetail.bill.totalAmount)}",
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Bottom Spacer
+                    item { Spacer(modifier = Modifier.height(80.dp)) }
                 }
-            }
-            BillDetailsState.Idle -> {
-                Box(modifier = Modifier.fillMaxSize().padding(paddingValues), contentAlignment = Alignment.Center) {
-                    Text(text = "Select an order to view bill details.")
+            } else if (billDetailsState is BillDetailsState.Error) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text("Error loading bill", color = MaterialTheme.colorScheme.error)
                 }
             }
         }
     }
 
-    // Custom Tip Dialog
-    if (showCustomTipDialog) {
-        AlertDialog(
-            onDismissRequest = { showCustomTipDialog = false },
-            title = { Text("Enter Custom Tip") },
-            text = {
-                OutlinedTextField(
-                    value = customTipInput,
-                    onValueChange = { customTipInput = it },
-                    label = { Text("Tip Amount") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            },
-            confirmButton = {
-                Button(onClick = {
-                    selectedTipAmount = customTipInput.toDoubleOrNull() ?: 0.0
-                    showCustomTipDialog = false
-                    customTipInput = ""
-                }) {
-                    Text("Add Tip")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showCustomTipDialog = false }) {
-                    Text("Cancel")
-                }
-            }
-        )
-    }
-
+    // Payment Dialog
     if (showPaymentDialog) {
         AlertDialog(
             onDismissRequest = { showPaymentDialog = false },
@@ -392,6 +469,7 @@ fun PayBillScreen(
                                 modifier = Modifier
                                     .height(36.dp)
                                     .clickable { paymentMode = mode }
+                                    .border(1.dp, if(selected) Color.Transparent else MaterialTheme.colorScheme.outline, RoundedCornerShape(8.dp))
                             ) {
                                 Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 12.dp)) {
                                     Text(mode.uppercase(), color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface)
@@ -399,19 +477,11 @@ fun PayBillScreen(
                             }
                         }
                     }
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
                     OutlinedTextField(
                         value = transactionId,
                         onValueChange = { transactionId = it },
                         label = { Text("Transaction ID") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    OutlinedTextField(
-                        value = paymentNotes,
-                        onValueChange = { paymentNotes = it },
-                        label = { Text("Notes") },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -439,7 +509,6 @@ fun PayBillScreen(
                         )
                         viewModel.recordBillPayment(current.bill.id, request, orderId)
                         showPaymentDialog = false
-                        Toast.makeText(context, "Payment recorded", Toast.LENGTH_SHORT).show()
                     } else {
                         Toast.makeText(context, "Enter a valid amount", Toast.LENGTH_SHORT).show()
                     }
@@ -448,162 +517,76 @@ fun PayBillScreen(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showPaymentDialog = false }) { Text("Cancel") }
+                TextButton(onClick = { showPaymentDialog = false }) {
+                    Text("Cancel")
+                }
             }
         )
     }
-}
-
-@Composable
-fun SuccessBillLayout(
-    billDetail: BillDetail, // Type-safe to your BillDetail class
-    paddingValues: PaddingValues,
-    totalPayable: Double,
-    selectedTipAmount: Double?,
-    onTipSelected: (Double?) -> Unit,
-    onCustomTipClicked: () -> Unit
-) {
-    val bill = billDetail.bill
-    val lineItems = billDetail.lineItems
-
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(paddingValues)
-            .background(Color.White),
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
-    ) {
-
-        // Header info chips
-        item {
-            Spacer(modifier = Modifier.height(8.dp))
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                InfoChip(text = "Bill #${bill.billNumber}")
-                InfoChip(text = "Table ${bill.tableId}")
-                InfoChip(text = "Token ${bill.orderId}")
-            }
-            Spacer(modifier = Modifier.height(16.dp))
-            Text("Items", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-            Spacer(modifier = Modifier.height(8.dp))
-        }
-        items(lineItems) { item: BillLineItem ->
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    // NOTE: isVeg is not in your current data structure, assuming true
-                    VegNonVegIndicator(isVeg = item.menuItem.isVegetarian, modifier = Modifier.padding(end = 8.dp))
-                    Column {
-                        Text(item.menuItem.name, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
-                        item.instructions?.let {
-                            Text(it, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
-                        }
+    
+    // Post Payment Success Dialog
+    if (showPostPaymentDialog) {
+        AlertDialog(
+            onDismissRequest = { /* Prevent dismissal without action */ },
+            title = { 
+                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+                    Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(48.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("Bill Paid Successfully")
+                }
+            },
+            text = {
+                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+                    Text("Amount: ₹${"%.2f".format(postPaymentAmount)}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    if (!postPaymentPhoneNumber.isNullOrBlank()) {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text("Share receipt with customer?", color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
-                Column(horizontalAlignment = Alignment.End) {
-                    Text(
-                        "₹${"%.2f".format(item.totalPrice)}",
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    Text(
-                        "${item.quantity} x ₹${"%.2f".format(item.totalPrice / item.quantity)}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color.Gray
-                    )
+            },
+            confirmButton = {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    if (!postPaymentPhoneNumber.isNullOrBlank()) {
+                        Button(
+                            onClick = {
+                                val phoneNumber = postPaymentPhoneNumber
+                                val message = "Thank you for dining with Swad Ratna! Your bill of ₹${"%.2f".format(postPaymentAmount)} has been paid. Visit us again!"
+                                val intent = Intent(Intent.ACTION_VIEW).apply {
+                                    data = Uri.parse("https://api.whatsapp.com/send?phone=$phoneNumber&text=${Uri.encode(message)}")
+                                }
+                                try {
+                                    context.startActivity(intent)
+                                } catch (e: Exception) {
+                                    Toast.makeText(context, "WhatsApp not installed", Toast.LENGTH_SHORT).show()
+                                }
+                                showPostPaymentDialog = false
+                                navController.navigate(com.swadratna.swadratna_staff.navigation.NavigationRoute.Tables.route) {
+                                    popUpTo(com.swadratna.swadratna_staff.navigation.NavigationRoute.Tables.route) { inclusive = true }
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF25D366)) // Keeping WhatsApp color as brand color
+                        ) {
+                            Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Share on WhatsApp")
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+                    
+                    OutlinedButton(
+                        onClick = {
+                            showPostPaymentDialog = false
+                            navController.navigate(com.swadratna.swadratna_staff.navigation.NavigationRoute.Tables.route) {
+                                popUpTo(com.swadratna.swadratna_staff.navigation.NavigationRoute.Tables.route) { inclusive = true }
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Done")
+                    }
                 }
             }
-        }
-        item {
-            HorizontalDivider(color = Color(0xFFEEEEEE), modifier = Modifier.padding(vertical = 8.dp))
-        }
-
-        // Tip chips
-        item {
-            Text("Tip", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-            Spacer(modifier = Modifier.height(8.dp))
-            TipChipsRow(
-                selectedTipAmount = selectedTipAmount,
-                onTipSelected = onTipSelected,
-                onCustomTipClicked = onCustomTipClicked
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-        }
-
-        // Summary card
-        item {
-            SummaryCard(bill = bill, totalPayable = totalPayable)
-            Spacer(modifier = Modifier.height(16.dp))
-        }
-    }
-}
-
-@Composable
-private fun InfoChip(text: String) {
-    Surface(
-        shape = RoundedCornerShape(16.dp),
-        color = Color(0xFFF4F4F4),
-        modifier = Modifier.height(28.dp)
-    ) {
-        Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 12.dp)) {
-            Text(text = text, style = MaterialTheme.typography.bodySmall, color = Color.Black)
-        }
-    }
-}
-
-@Composable
-private fun SummaryCard(bill: com.swadratna.swadratna_staff.data.remote.model.Bill, totalPayable: Double) {
-    Card(shape = RoundedCornerShape(12.dp), colors = CardDefaults.cardColors(containerColor = Color(0xFFFAFAFA))) {
-        Column(Modifier.fillMaxWidth().padding(16.dp)) {
-            Text("Summary", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-            Spacer(modifier = Modifier.height(8.dp))
-            BillDetailRow("Item total", bill.subTotal)
-            BillDetailRow("CGST", bill.taxAmount / 2, prefix = "+ ")
-            BillDetailRow("SGST", bill.taxAmount / 2, prefix = "+ ")
-            if (bill.serviceCharge > 0) BillDetailRow("Service Charge", bill.serviceCharge, prefix = "+ ")
-            if (bill.discountAmount > 0) BillDetailRow("Discount", bill.discountAmount.toDouble(), prefix = "- ")
-            Spacer(modifier = Modifier.height(12.dp))
-            HorizontalDivider(color = Color(0xFFDDDDDD))
-            Spacer(modifier = Modifier.height(12.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text("Payable Amount", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                Text("₹${"%.2f".format(totalPayable)}", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-            }
-        }
-    }
-}
-
-@Composable
-private fun TipChipsRow(
-    selectedTipAmount: Double?,
-    onTipSelected: (Double?) -> Unit,
-    onCustomTipClicked: () -> Unit
-) {
-    val tips = listOf(null, 20.0, 50.0, 100.0)
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        tips.forEach { amount ->
-            TipOptionChip(
-                amount = amount,
-                text = if (amount == null) "No Tip" else null,
-                isSelected = selectedTipAmount == amount,
-                onClick = { onTipSelected(amount) }
-            )
-        }
-        TipOptionChip(
-            text = "Custom",
-            isSelected = false,
-            onClick = onCustomTipClicked
         )
     }
 }

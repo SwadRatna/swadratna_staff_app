@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -134,6 +135,9 @@ class OrderManagementViewModel @Inject constructor(
 
     private val _createParcelOrderState = MutableStateFlow<CreateParcelOrderState>(CreateParcelOrderState.Idle)
     val createParcelOrderState: StateFlow<CreateParcelOrderState> = _createParcelOrderState.asStateFlow()
+
+    private val _paymentSuccess = kotlinx.coroutines.flow.MutableSharedFlow<com.swadratna.swadratna_staff.data.remote.services.RecordPaymentResponse>()
+    val paymentSuccess = _paymentSuccess.asSharedFlow()
 
     private val _staffRole = MutableStateFlow<String?>(null)
     val staffRole: StateFlow<String?> = _staffRole.asStateFlow()
@@ -315,12 +319,15 @@ class OrderManagementViewModel @Inject constructor(
     }
 
 
-    fun approveBill(approvalAction: String, reason: String, billId: Int) {
+    fun approveBill(approvalAction: String, reason: String, billId: Int, orderIdForRefresh: String?) {
         viewModelScope.launch {
             _loading.value = true
             _error.value = null
             repository.approveBill(approvalAction , reason , billId)
-                .onSuccess { /* Handle success, maybe clear current bill or refresh tables */ }
+                .onSuccess { 
+                    // Handle success, maybe clear current bill or refresh tables
+                    orderIdForRefresh?.let { getBillDetails(it) }
+                }
                 .onFailure { _error.value = it.message }
             _loading.value = false
         }
@@ -358,6 +365,7 @@ class OrderManagementViewModel @Inject constructor(
             _error.value = null
             repository.recordBillPayment(billId, request)
                 .onSuccess {
+                    _paymentSuccess.emit(it)
                     orderIdForRefresh?.let { getBillDetails(it) }
                 }
                 .onFailure { _error.value = it.message }
