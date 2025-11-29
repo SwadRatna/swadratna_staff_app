@@ -29,10 +29,11 @@ import com.swadratna.swadratna_staff.data.remote.model.OrderDetailsX
 import com.swadratna.swadratna_staff.data.remote.model.BillDetail
 import com.swadratna.swadratna_staff.data.remote.model.FreeTableRequest
 import com.swadratna.swadratna_staff.data.remote.model.FreeTableResponse
+import com.swadratna.swadratna_staff.data.remote.services.RecordPaymentRequest
+import com.swadratna.swadratna_staff.data.remote.services.RecordPaymentResponse
 
 data class BillActionRequest(
     val action: String,
-    val reason: String
 )
 
 
@@ -114,5 +115,14 @@ interface ApiService {
     suspend fun registerDeviceToken(
         @Body request: RegisterDeviceTokenRequest
     ): Response<RegisterDeviceTokenResponse>
+
+    @POST("/api/v1/staff/orders/create")
+    suspend fun createOrder(@Body request: CreateOrderRequest): Response<CreateOrderResponse>
+
+    @PATCH("/api/v1/staff/bill/{billId}/payment")
+    suspend fun recordBillPayment(
+        @Path("billId") billId: Int,
+        @Body request: RecordPaymentRequest
+    ): Response<RecordPaymentResponse>
 
 }

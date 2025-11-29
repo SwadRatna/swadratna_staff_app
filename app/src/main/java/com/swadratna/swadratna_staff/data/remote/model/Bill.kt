@@ -21,3 +21,11 @@ data class Bill(
     val status: String,
     @SerializedName("created_by_id") val createdById: Int
 )
+
+enum class BILL_STATUS(val value: String) {
+    PENDING("Pending"),
+    ACCEPTED("Accepted"),
+    Hold("Hold"),
+    REJECTED("Rejected"),
+    PAID("paid"),
+}

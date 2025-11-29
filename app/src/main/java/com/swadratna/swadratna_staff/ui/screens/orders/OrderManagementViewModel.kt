@@ -77,6 +77,13 @@ sealed class FreeTableState {
     data class Error(val message: String) : FreeTableState()
 }
 
+sealed class CreateParcelOrderState {
+    object Idle : CreateParcelOrderState()
+    object Loading : CreateParcelOrderState()
+    data class Success(val response: com.swadratna.swadratna_staff.data.remote.services.CreateOrderResponse) : CreateParcelOrderState()
+    data class Error(val message: String) : CreateParcelOrderState()
+}
+
 @HiltViewModel
 class OrderManagementViewModel @Inject constructor(
     private val repository: OrderManagementRepository,
@@ -124,6 +131,9 @@ class OrderManagementViewModel @Inject constructor(
 
     private val _freeTableState = MutableStateFlow<FreeTableState>(FreeTableState.Idle)
     val freeTableState: StateFlow<FreeTableState> = _freeTableState.asStateFlow()
+
+    private val _createParcelOrderState = MutableStateFlow<CreateParcelOrderState>(CreateParcelOrderState.Idle)
+    val createParcelOrderState: StateFlow<CreateParcelOrderState> = _createParcelOrderState.asStateFlow()
 
     private val _staffRole = MutableStateFlow<String?>(null)
     val staffRole: StateFlow<String?> = _staffRole.asStateFlow()
@@ -327,5 +337,31 @@ class OrderManagementViewModel @Inject constructor(
 
     fun resetFreeTableState() {
         _freeTableState.value = FreeTableState.Idle
+    }
+
+    fun createParcelOrder(locationId: Int, customerName: String, customerPhone: String) {
+        viewModelScope.launch {
+            _createParcelOrderState.value = CreateParcelOrderState.Loading
+            repository.createParcelOrder(locationId, customerName, customerPhone)
+                .onSuccess { _createParcelOrderState.value = CreateParcelOrderState.Success(it) }
+                .onFailure { _createParcelOrderState.value = CreateParcelOrderState.Error(it.message ?: "Unknown error") }
+        }
+    }
+
+    fun resetCreateParcelOrderState() {
+        _createParcelOrderState.value = CreateParcelOrderState.Idle
+    }
+
+    fun recordBillPayment(billId: Int, request: com.swadratna.swadratna_staff.data.remote.services.RecordPaymentRequest, orderIdForRefresh: String?) {
+        viewModelScope.launch {
+            _loading.value = true
+            _error.value = null
+            repository.recordBillPayment(billId, request)
+                .onSuccess {
+                    orderIdForRefresh?.let { getBillDetails(it) }
+                }
+                .onFailure { _error.value = it.message }
+            _loading.value = false
+        }
     }
 }

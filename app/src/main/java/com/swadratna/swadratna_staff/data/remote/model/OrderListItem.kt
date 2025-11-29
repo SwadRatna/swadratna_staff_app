@@ -15,6 +15,6 @@ data class OrderListItem(
     @SerializedName("table_id") val tableId: Int,
     @SerializedName("total_value") val totalValue: Double,
     @SerializedName("updated_at") val updatedAt: String,
-    val user: UserX, // Reusing UserX
+    val user: UserX?, // Reusing UserX
     @SerializedName("user_id") val userId: Int
 )

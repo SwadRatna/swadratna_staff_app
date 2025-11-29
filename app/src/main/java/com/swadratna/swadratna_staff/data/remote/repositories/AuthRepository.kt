@@ -2,6 +2,7 @@ package com.swadratna.swadratna_staff.data.remote.repositories
 
 import android.os.Build
 import androidx.annotation.RequiresApi
+import com.google.gson.Gson
 import com.swadratna.swadratna_staff.data.local.dao.StaffUserDao
 import com.swadratna.swadratna_staff.data.local.entities.StaffUser
 import com.swadratna.swadratna_staff.data.remote.model.Staff_User
@@ -34,7 +35,21 @@ class AuthRepository @Inject constructor(
                     Result.success(it)
                 } ?: Result.failure(Exception("Login failed: Empty response"))
             } else {
-                Result.failure(Exception("Login failed: ${response.message()}"))
+                val errorBody = response.errorBody()?.string()
+
+                val errorMessage = if (errorBody != null) {
+                    try {
+                        val gson = Gson()
+                        val errorResponse = gson.fromJson(errorBody, ErrorResponse::class.java)
+                        errorResponse.errorMessage
+                    } catch (e: Exception) {
+                        "Login failed with code ${response.code()}"
+                    }
+                } else {
+                    "Login failed with code ${response.code()}"
+                }
+
+                Result.failure(Exception(errorMessage))
             }
         } catch (e: Exception) {
             Result.failure(e)

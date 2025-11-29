@@ -17,13 +17,15 @@ import com.swadratna.swadratna_staff.data.remote.model.FreeTableResponse
 import com.swadratna.swadratna_staff.data.remote.services.ApiService
 import com.swadratna.swadratna_staff.data.remote.services.ApproveBillResponse
 import com.swadratna.swadratna_staff.data.remote.services.BillActionRequest
+import com.swadratna.swadratna_staff.data.remote.services.RecordPaymentRequest
+import com.swadratna.swadratna_staff.data.remote.services.RecordPaymentResponse
 import retrofit2.HttpException
 import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Named
 
 class OrderManagementRepository @Inject constructor(
-    @Named("authenticated")  private val apiService: ApiService
+    @Named("authenticated")  private val apiService: ApiService,
 ) {
 
     suspend fun getTablesByLocation(locationId: Int): Result<TableListResponse> {
@@ -126,7 +128,7 @@ class OrderManagementRepository @Inject constructor(
 
     suspend fun approveBill(approvalAction: String , reason: String, orderId: Int): Result<ApproveBillResponse> {
         return try {
-            val request = BillActionRequest(action = approvalAction , reason)
+            val request = BillActionRequest(action = approvalAction )
             val response = apiService.updateBillStatus(orderId, request)
             if (response.isSuccessful) {
                 response.body()?.let {
@@ -195,6 +197,46 @@ class OrderManagementRepository @Inject constructor(
                 } ?: Result.failure(Exception("Failed to free table: Empty response"))
             } else {
                 Result.failure(Exception("Failed to free table: ${response.message()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun createParcelOrder(
+        locationId: Int,
+        customerName: String,
+        customerPhone: String
+    ): Result<com.swadratna.swadratna_staff.data.remote.services.CreateOrderResponse> {
+        return try {
+            val request = com.swadratna.swadratna_staff.data.remote.services.CreateOrderRequest(
+                location_id = locationId,
+                customer_name = customerName,
+                customer_phone = customerPhone,
+                order_type = "takeaway"
+            )
+            val response = apiService.createOrder(request)
+            if (response.isSuccessful) {
+                response.body()?.let {
+                    Result.success(it)
+                } ?: Result.failure(Exception("Failed to create order: Empty response"))
+            } else {
+                Result.failure(Exception("Failed to create order: ${response.message()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun recordBillPayment(billId: Int, request: RecordPaymentRequest): Result<RecordPaymentResponse> {
+        return try {
+            val response = apiService.recordBillPayment(billId, request)
+            if (response.isSuccessful) {
+                response.body()?.let {
+                    Result.success(it)
+                } ?: Result.failure(Exception("Failed to record payment: Empty response"))
+            } else {
+                Result.failure(Exception("Failed to record payment: ${response.message()}"))
             }
         } catch (e: Exception) {
             Result.failure(e)

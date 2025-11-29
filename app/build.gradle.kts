@@ -12,6 +12,7 @@ android {
     compileSdk = 35
 
     defaultConfig {
+//        in.engineerfoodie.swadratna.swadratna_staff
         applicationId = "com.swadratna.swadratna_staff"
         minSdk = 27
         targetSdk = 35

@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import com.swadratna.swadratna_staff.data.remote.model.BILL_STATUS
 import com.swadratna.swadratna_staff.data.remote.model.BillDetail
 import com.swadratna.swadratna_staff.data.remote.model.BillLineItem // Assuming this is your data class
 import com.swadratna.swadratna_staff.data.remote.model.StaffRole
@@ -133,6 +134,13 @@ fun PayBillScreen(
     var showCustomTipDialog by remember { mutableStateOf(false) }
     var customTipInput by remember { mutableStateOf("") }
     val role by viewModel.staffRole.collectAsStateWithLifecycle()
+
+    var showPaymentDialog by remember { mutableStateOf(false) }
+    var paymentMode by remember { mutableStateOf("cash") }
+    var transactionId by remember { mutableStateOf("") }
+    var paymentNotes by remember { mutableStateOf("") }
+    var amountPaidInput by remember { mutableStateOf("") }
+    var statusMenuExpanded by remember { mutableStateOf(false) }
 
     val billDetail = (billDetailsState as? BillDetailsState.Success)?.billDetail
 
@@ -239,17 +247,68 @@ fun PayBillScreen(
                     }
                 }
             } else if(role== StaffRole.MANAGER.roleName){
-                SlideToConfirm(
-                    text = "Slide to Approve Bill",
-                    onConfirmation = {
-                        billDetail?.bill?.id?.let {
-                            viewModel.approveBill("ACCEPT" , "Looks fine" ,it)
+                val current = billDetail?.bill?.status?.lowercase()
+                val isAccepted = current == com.swadratna.swadratna_staff.data.remote.model.BILL_STATUS.ACCEPTED.value.lowercase()
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                ) {
+                    Text("Status: ${billDetail?.bill?.status ?: ""}", style = MaterialTheme.typography.titleMedium)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    ExposedDropdownMenuBox(
+                        expanded = statusMenuExpanded,
+                        onExpandedChange = { statusMenuExpanded = !statusMenuExpanded }
+                    ) {
+                        OutlinedTextField(
+                            value = billDetail?.bill?.status ?: "",
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("Change Status") },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = statusMenuExpanded) },
+                            modifier = Modifier
+                                .menuAnchor()
+                                .fillMaxWidth()
+                        )
+                        ExposedDropdownMenu(
+                            expanded = statusMenuExpanded,
+                            onDismissRequest = { statusMenuExpanded = false }
+                        ) {
+                            if (!isAccepted) {
+                                DropdownMenuItem(
+                                    text = { Text(BILL_STATUS.ACCEPTED.value) },
+                                    onClick = {
+                                        statusMenuExpanded = false
+                                        billDetail?.bill?.id?.let { viewModel.approveBill("ACCEPT", "", it) }
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text(BILL_STATUS.Hold.value) },
+                                    onClick = {
+                                        statusMenuExpanded = false
+                                        billDetail?.bill?.id?.let { viewModel.approveBill("HOLD", "", it) }
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text(BILL_STATUS.REJECTED.value) },
+                                    onClick = {
+                                        statusMenuExpanded = false
+                                        billDetail?.bill?.id?.let { viewModel.approveBill("REJECT", "", it) }
+                                    }
+                                )
+                            } else {
+                                DropdownMenuItem(
+                                    text = { Text("Mark as ${BILL_STATUS.PAID.value}") },
+                                    onClick = {
+                                        statusMenuExpanded = false
+                                        amountPaidInput = "${billDetail?.bill?.totalAmount ?: 0.0}"
+                                        showPaymentDialog = true
+                                    }
+                                )
+                            }
                         }
-                    },
-                    trackColor = Red80,
-                    thumbColor = Color.White,
-                    modifier = Modifier.padding(16.dp)
-                )
+                    }
+                }
             }
 
         }
@@ -312,6 +371,83 @@ fun PayBillScreen(
                 TextButton(onClick = { showCustomTipDialog = false }) {
                     Text("Cancel")
                 }
+            }
+        )
+    }
+
+    if (showPaymentDialog) {
+        AlertDialog(
+            onDismissRequest = { showPaymentDialog = false },
+            title = { Text("Record Payment") },
+            text = {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Text("Payment Mode", fontWeight = FontWeight.SemiBold)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        listOf("cash", "card", "upi").forEach { mode ->
+                            val selected = paymentMode == mode
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
+                                modifier = Modifier
+                                    .height(36.dp)
+                                    .clickable { paymentMode = mode }
+                            ) {
+                                Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 12.dp)) {
+                                    Text(mode.uppercase(), color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface)
+                                }
+                            }
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = transactionId,
+                        onValueChange = { transactionId = it },
+                        label = { Text("Transaction ID") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = paymentNotes,
+                        onValueChange = { paymentNotes = it },
+                        label = { Text("Notes") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = amountPaidInput,
+                        onValueChange = { amountPaidInput = it },
+                        label = { Text("Amount Paid") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                Button(onClick = {
+                    val amount = amountPaidInput.toDoubleOrNull()
+                    val current = billDetail
+                    if (amount != null && current != null) {
+                        val request = com.swadratna.swadratna_staff.data.remote.services.RecordPaymentRequest(
+                            payment_mode = paymentMode,
+                            transaction_id = if (transactionId.isBlank()) null else transactionId,
+                            notes = if (paymentNotes.isBlank()) null else paymentNotes,
+                            amount_paid = amount
+                        )
+                        viewModel.recordBillPayment(current.bill.id, request, orderId)
+                        showPaymentDialog = false
+                        Toast.makeText(context, "Payment recorded", Toast.LENGTH_SHORT).show()
+                    } else {
+                        Toast.makeText(context, "Enter a valid amount", Toast.LENGTH_SHORT).show()
+                    }
+                }) {
+                    Text("Record")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showPaymentDialog = false }) { Text("Cancel") }
             }
         )
     }
