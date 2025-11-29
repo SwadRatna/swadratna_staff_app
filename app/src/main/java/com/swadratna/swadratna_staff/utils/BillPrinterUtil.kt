@@ -448,12 +448,63 @@ class BillPrinterUtil {
             return printers
         }
 
+        private const val PREF_NAME = "printer_prefs"
+        private const val KEY_PRINTER_ADDRESS = "default_printer_address"
+        private const val KEY_PRINTER_NAME = "default_printer_name"
+
+        fun saveDefaultPrinter(context: Context, address: String, name: String) {
+            val prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
+            prefs.edit()
+                .putString(KEY_PRINTER_ADDRESS, address)
+                .putString(KEY_PRINTER_NAME, name)
+                .apply()
+        }
+
+        fun getDefaultPrinter(context: Context): Pair<String?, String?> {
+            val prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
+            val address = prefs.getString(KEY_PRINTER_ADDRESS, null)
+            val name = prefs.getString(KEY_PRINTER_NAME, null)
+            return Pair(address, name)
+        }
+
+        fun clearDefaultPrinter(context: Context) {
+            val prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
+            prefs.edit().clear().apply()
+        }
+
+        /**
+         * Select a printer to be set as default without printing
+         */
+        fun selectDefaultPrinter(
+            context: Context,
+            onDone: (success: Boolean, msg: String) -> Unit
+        ) {
+            if (!hasBluetoothPermissions(context)) {
+                onDone(false, "Bluetooth permissions required")
+                return
+            }
+
+            val printers = getPairedPrinters()
+            if (printers.isEmpty()) {
+                onDone(false, "No paired printer found")
+                return
+            }
+
+            val names = printers.map { "${it.name}  (${it.address})" }.toTypedArray()
+            AlertDialog.Builder(context)
+                .setTitle("Select Default Printer")
+                .setItems(names) { _, which ->
+                    val chosen = printers[which]
+                    saveDefaultPrinter(context, chosen.address, chosen.name)
+                    onDone(true, "Default printer set to ${chosen.name}")
+                }
+                .setNegativeButton("Cancel") { _, _ -> onDone(false, "Cancelled") }
+                .show()
+        }
+
         /**
          * Show a system AlertDialog with paired printers; print when user picks one.
-         * Usage:
-         *   BillPrinterUtil.printWithChooser(context, billText) { ok, msg ->
-         *       Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
-         *   }
+         * If a default printer is set, it tries to print directly.
          */
         fun printWithChooser(
             context: Context,
@@ -466,7 +517,39 @@ class BillPrinterUtil {
                 return
             }
 
+            // Check for default printer
+            val (defaultAddress, defaultName) = getDefaultPrinter(context)
             val printers = getPairedPrinters()
+
+            if (defaultAddress != null) {
+                val defaultPrinter = printers.find { it.address == defaultAddress }
+                if (defaultPrinter != null) {
+                    try {
+                        val connectedConnection = defaultPrinter.connection.connect()
+                        val printer = EscPosPrinter(
+                            connectedConnection,
+                            203,
+                            PAPER_WIDTH_MM.toFloat(),
+                            CHAR_WIDTH
+                        )
+                        printer.printFormattedTextAndCut(billText)
+                        printer.disconnectPrinter()
+                        onDone(true, "Printed successfully using $defaultName")
+                        return
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                        // Fallback to chooser if default printer fails?
+                        // User requested: "if that printer available just print using this only"
+                        // But if it fails, maybe we should let them choose another one or just fail.
+                        // Let's try to fall back to chooser so they aren't stuck.
+                        // Or maybe just return failure as per "you should not give option to slect veerytime"
+                        // However, practical UX suggests if the default fails, maybe they want to pick another.
+                        // Let's show a toast that default failed and open chooser.
+                        // For now, I will stick to the chooser fallback for robustness.
+                    }
+                }
+            }
+
             if (printers.isEmpty()) {
                 onDone(false, "No paired printer found. Please pair one in Android settings.")
                 return

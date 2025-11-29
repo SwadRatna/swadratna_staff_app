@@ -49,6 +49,7 @@ import com.swadratna.swadratna_staff.data.remote.model.OrderDetailsX
 import com.swadratna.swadratna_staff.data.remote.model.OrderXX
 import com.swadratna.swadratna_staff.navigation.NavigationRoute
 import com.swadratna.swadratna_staff.utils.BillPrinterUtil
+import com.swadratna.swadratna_staff.utils.rememberBluetoothPermissionLauncher
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -257,6 +258,41 @@ fun OrderSummaryCard(order: OrderXX) {
 @Composable
 fun KotCard(kot: KotX, tableLabel: String?, customerName: String?) {
     val context = LocalContext.current
+
+    val performPrint = rememberBluetoothPermissionLauncher {
+        val kotItems = kot.items.map {
+            BillPrinterUtil.Companion.KotPrintingItem(
+                menu_name = it.menu_item.name,
+                quantity = it.quantity
+            )
+        }
+
+        var createdAt = Date()
+        try {
+            val isoFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault())
+            createdAt = isoFormat.parse(kot.created_at) ?: Date()
+        } catch (e: Exception) {
+            try {
+                val isoFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.getDefault())
+                createdAt = isoFormat.parse(kot.created_at) ?: Date()
+            } catch (e2: Exception) {
+                e2.printStackTrace()
+            }
+        }
+
+        val kotText = BillPrinterUtil.generateKOT(
+            kotItems = kotItems,
+            headerLeft = "KOT #${kot.kot_number}",
+            tableLabel = tableLabel,
+            customerName = customerName,
+            createdAt = createdAt
+        )
+
+        BillPrinterUtil.printWithChooser(context, kotText) { success, msg ->
+            Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+        }
+    }
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(MaterialTheme.colorScheme.surface),
@@ -283,37 +319,7 @@ fun KotCard(kot: KotX, tableLabel: String?, customerName: String?) {
                 }
 
                 IconButton(onClick = {
-                    val kotItems = kot.items.map {
-                        BillPrinterUtil.Companion.KotPrintingItem(
-                            menu_name = it.menu_item.name,
-                            quantity = it.quantity
-                        )
-                    }
-
-                    var createdAt = Date()
-                    try {
-                        val isoFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault())
-                        createdAt = isoFormat.parse(kot.created_at) ?: Date()
-                    } catch (e: Exception) {
-                        try {
-                            val isoFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.getDefault())
-                            createdAt = isoFormat.parse(kot.created_at) ?: Date()
-                        } catch (e2: Exception) {
-                            e2.printStackTrace()
-                        }
-                    }
-
-                    val kotText = BillPrinterUtil.generateKOT(
-                        kotItems = kotItems,
-                        headerLeft = "KOT #${kot.kot_number}",
-                        tableLabel = tableLabel,
-                        customerName = customerName,
-                        createdAt = createdAt
-                    )
-
-                    BillPrinterUtil.printWithChooser(context, kotText) { success, msg ->
-                        Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
-                    }
+                    performPrint()
                 }) {
                     Icon(painter = painterResource(R.drawable.ic_recipt), contentDescription = "Print KOT")
                 }

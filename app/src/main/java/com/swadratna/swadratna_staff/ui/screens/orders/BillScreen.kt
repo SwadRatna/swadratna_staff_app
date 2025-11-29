@@ -37,6 +37,7 @@ import com.swadratna.swadratna_staff.data.remote.model.StaffRole
 import com.swadratna.swadratna_staff.ui.components.SlideToConfirm
 import com.swadratna.swadratna_staff.ui.theme.Red80
 import com.swadratna.swadratna_staff.utils.BillPrinterUtil
+import com.swadratna.swadratna_staff.utils.rememberBluetoothPermissionLauncher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -149,7 +150,7 @@ fun PayBillScreen(
     val totalPayable = totalAmount + (selectedTipAmount ?: 0.0)
     
     // Print bill function
-    fun printBill() {
+    val performPrint = rememberBluetoothPermissionLauncher {
         billDetail?.let { bill ->
             val billText = BillPrinterUtil.generateBillText(
                 billDetail = bill,
@@ -205,7 +206,7 @@ fun PayBillScreen(
                 },
                 actions = {
                     Button(
-                        onClick = { printBill() },
+                        onClick = { performPrint() },
                         colors = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.primary,
                             contentColor = MaterialTheme.colorScheme.onPrimary

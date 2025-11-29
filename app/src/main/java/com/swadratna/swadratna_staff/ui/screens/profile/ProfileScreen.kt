@@ -29,6 +29,12 @@ import com.swadratna.swadratna_staff.ui.components.NavButton
 import com.swadratna.swadratna_staff.ui.screens.login.LoginViewModel
 import com.swadratna.swadratna_staff.ui.theme.RedGrey20
 
+import androidx.compose.ui.platform.LocalContext
+import android.widget.Toast
+import com.swadratna.swadratna_staff.utils.BillPrinterUtil
+import com.swadratna.swadratna_staff.utils.rememberBluetoothPermissionLauncher
+import kotlinx.coroutines.launch
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StaffProfileScreen(
@@ -184,6 +190,37 @@ fun StaffProfileScreen(
 //                    onClick = { /* TODO: Screen not implemented yet */ }
 //                )
 //            }
+
+            // Printer Settings
+            var defaultPrinterName by remember { mutableStateOf("None Selected") }
+            val context = LocalContext.current
+
+            // Load initial state
+            LaunchedEffect(Unit) {
+                val (_, name) = BillPrinterUtil.getDefaultPrinter(context)
+                defaultPrinterName = name ?: "None Selected"
+            }
+
+            val performSelectPrinter = rememberBluetoothPermissionLauncher {
+                BillPrinterUtil.selectDefaultPrinter(context) { success, msg ->
+                    if (success) {
+                        val (_, name) = BillPrinterUtil.getDefaultPrinter(context)
+                        defaultPrinterName = name ?: "None Selected"
+                    }
+                    Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                }
+            }
+
+            ProfileSection(title = "Printer Settings") {
+                ProfileMenuItem(
+                    icon = ImageVector.vectorResource(R.drawable.ic_recipt),
+                    title = "Default Printer",
+                    subtitle = defaultPrinterName,
+                    onClick = {
+                        performSelectPrinter()
+                    }
+                )
+            }
 
             Spacer(modifier = Modifier.height(32.dp))
 
