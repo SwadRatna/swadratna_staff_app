@@ -603,5 +603,108 @@ class BillPrinterUtil {
                 ContextCompat.checkSelfPermission(context, android.Manifest.permission.BLUETOOTH_ADMIN) == PackageManager.PERMISSION_GRANTED
             }
         }
+
+        /**
+         * Generates a PDF file for sharing, saving it to the app's cache directory.
+         */
+        fun generatePdfFile(
+            context: Context,
+            billDetail: BillDetail,
+            storeAddress: Address? = null,
+            storeName: String = "SWAD RATNA",
+            storePhone: String? = null,
+            customerName: String? = null,
+            customerMobile: String? = null,
+            cashierName: String? = null
+        ): File? {
+            return try {
+                val billText = generateBillText(
+                    billDetail = billDetail,
+                    storeAddress = storeAddress,
+                    storeName = storeName,
+                    storePhone = storePhone,
+                    customerName = customerName,
+                    customerMobile = customerMobile,
+                    cashierName = cashierName
+                )
+                val plainText = convertEscPosToPlainText(billText)
+                val lines = plainText.split("\n")
+
+                // Calculate required height
+                // 80mm width approx 300 points.
+                val pageWidth = 300
+                val lineHeight = 20f
+                val marginTop = 40f
+                val marginBottom = 40f
+                val marginLeft = 20f
+                // Dynamic height based on content length + margins
+                val contentHeight = (lines.size * lineHeight) + marginTop + marginBottom
+                // Ensure minimum height
+                val pageHeight = contentHeight.coerceAtLeast(400f).toInt()
+
+                // Create PDF document with "Receipt" dimensions
+                val pdfDocument = PdfDocument()
+                val pageInfo = PdfDocument.PageInfo.Builder(pageWidth, pageHeight, 1).create()
+                val currentPage = pdfDocument.startPage(pageInfo)
+
+                val canvas = currentPage.canvas
+                // Fill white background
+                canvas.drawColor(android.graphics.Color.WHITE)
+
+                val paint = Paint().apply {
+                    textSize = 12f // Monospace-like size
+                    isAntiAlias = true
+                    color = android.graphics.Color.BLACK
+                    // typeface = Typeface.MONOSPACE // Optional: use monospace for alignment if needed
+                }
+
+                val titlePaint = Paint().apply {
+                    textSize = 14f
+                    isFakeBoldText = true
+                    isAntiAlias = true
+                    color = android.graphics.Color.BLACK
+                    textAlign = Paint.Align.CENTER
+                }
+
+                // Draw content
+                var yPosition = marginTop
+
+                // Title centered
+                canvas.drawText("SWAD RATNA - Restaurant Bill", (pageWidth / 2).toFloat(), yPosition, titlePaint)
+                yPosition += lineHeight * 2
+
+                // Draw bill content line by line
+                lines.forEach { line ->
+                    if (line.trim().isNotEmpty()) {
+                        // Simple left alignment for now as our text generation relies on spaces
+                        // Since we are using a narrower width, we might need to ensure the text fits.
+                        // The plainText is generated with ~32 chars width for 58mm. 
+                        // 300pts width with 12f text size should fit ~32-40 chars easily.
+                        canvas.drawText(line, marginLeft, yPosition, paint)
+                    }
+                    yPosition += lineHeight
+                }
+
+                pdfDocument.finishPage(currentPage)
+
+                // Save PDF to cache directory for sharing
+                // Using externalCacheDir if available, else cacheDir
+                val cachePath = File(context.cacheDir, "bills")
+                cachePath.mkdirs()
+                
+                val fileName = "Bill_${billDetail.bill.billNumber}_${System.currentTimeMillis()}.pdf"
+                val file = File(cachePath, fileName)
+
+                val fos = FileOutputStream(file)
+                pdfDocument.writeTo(fos)
+                pdfDocument.close()
+                fos.close()
+
+                file
+            } catch (e: Exception) {
+                e.printStackTrace()
+                null
+            }
+        }
     }
 }

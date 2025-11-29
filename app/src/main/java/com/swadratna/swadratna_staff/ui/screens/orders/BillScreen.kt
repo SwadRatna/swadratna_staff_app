@@ -111,6 +111,66 @@ fun PayBillScreen(
         }
     }
 
+    val shareBill = remember(billDetail, currentStaffUser, currentBill) {
+        { phoneNumber: String? ->
+            billDetail?.let { bill ->
+                val file = BillPrinterUtil.generatePdfFile(
+                    context = context,
+                    billDetail = bill,
+                    storeAddress = currentStaffUser?.location?.address,
+                    storeName = "SWAD RATNA",
+                    storePhone = currentStaffUser?.location?.location_mobile_number,
+                    customerName = currentBill?.customerName,
+                    customerMobile = null,
+                    cashierName = currentStaffUser?.username
+                )
+
+                file?.let { pdfFile ->
+                    val uri = androidx.core.content.FileProvider.getUriForFile(
+                        context,
+                        "${context.packageName}.fileprovider",
+                        pdfFile
+                    )
+                    
+                    val message = "Thank you for dining with Swad Ratna! Here is your bill.\n\nTotal Amount: ₹${"%.2f".format(bill.bill.totalAmount)}\n\nVisit us again!"
+
+                    if (!phoneNumber.isNullOrBlank()) {
+                        // Try to share directly to WhatsApp number
+                        try {
+                            val whatsappIntent = Intent(Intent.ACTION_SEND).apply {
+                                type = "application/pdf"
+                                putExtra(Intent.EXTRA_STREAM, uri)
+                                putExtra(Intent.EXTRA_TEXT, message)
+                                putExtra("jid", "$phoneNumber@s.whatsapp.net") // WhatsApp specific
+                                setPackage("com.whatsapp")
+                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                            }
+                            context.startActivity(whatsappIntent)
+                        } catch (e: Exception) {
+                            // Fallback if WhatsApp not installed or fails
+                            val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                                type = "application/pdf"
+                                putExtra(Intent.EXTRA_STREAM, uri)
+                                putExtra(Intent.EXTRA_TEXT, message)
+                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                            }
+                            context.startActivity(Intent.createChooser(shareIntent, "Share Bill"))
+                        }
+                    } else {
+                         // General share
+                        val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                            type = "application/pdf"
+                            putExtra(Intent.EXTRA_STREAM, uri)
+                            putExtra(Intent.EXTRA_TEXT, message)
+                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        }
+                        context.startActivity(Intent.createChooser(shareIntent, "Share Bill"))
+                    }
+                }
+            }
+        }
+    }
+
     // Print bill function
     val performPrint = rememberBluetoothPermissionLauncher {
         billDetail?.let { bill ->
@@ -159,6 +219,12 @@ fun PayBillScreen(
                 actions = {
                     IconButton(onClick = { performPrint() }, enabled = billDetail != null) {
                         Text("🖨️", fontSize = 20.sp)
+                    }
+                    IconButton(onClick = { shareBill(null) }, enabled = billDetail != null) {
+                        Icon(
+                            imageVector = Icons.Default.Share,
+                            contentDescription = "Share"
+                        )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -549,16 +615,7 @@ fun PayBillScreen(
                     if (!postPaymentPhoneNumber.isNullOrBlank()) {
                         Button(
                             onClick = {
-                                val phoneNumber = postPaymentPhoneNumber
-                                val message = "Thank you for dining with Swad Ratna! Your bill of ₹${"%.2f".format(postPaymentAmount)} has been paid. Visit us again!"
-                                val intent = Intent(Intent.ACTION_VIEW).apply {
-                                    data = Uri.parse("https://api.whatsapp.com/send?phone=$phoneNumber&text=${Uri.encode(message)}")
-                                }
-                                try {
-                                    context.startActivity(intent)
-                                } catch (e: Exception) {
-                                    Toast.makeText(context, "WhatsApp not installed", Toast.LENGTH_SHORT).show()
-                                }
+                                shareBill(postPaymentPhoneNumber)
                                 showPostPaymentDialog = false
                                 navController.navigate(com.swadratna.swadratna_staff.navigation.NavigationRoute.Tables.route) {
                                     popUpTo(com.swadratna.swadratna_staff.navigation.NavigationRoute.Tables.route) { inclusive = true }
@@ -569,7 +626,7 @@ fun PayBillScreen(
                         ) {
                             Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Share on WhatsApp")
+                            Text("Share Receipt")
                         }
                         Spacer(modifier = Modifier.height(8.dp))
                     }
