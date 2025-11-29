@@ -17,7 +17,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -27,13 +29,17 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -42,18 +48,22 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.swadratna.swadratna_staff.data.remote.model.KotX
 import com.swadratna.swadratna_staff.data.remote.model.OrderDetailsX
 import com.swadratna.swadratna_staff.data.remote.model.OrderXX
 import com.swadratna.swadratna_staff.navigation.NavigationRoute
+import com.swadratna.swadratna_staff.ui.screens.kot.KotStatusUpdateState
+import com.swadratna.swadratna_staff.ui.screens.kot.KotViewModel
 import com.swadratna.swadratna_staff.utils.BillPrinterUtil
 import com.swadratna.swadratna_staff.utils.rememberBluetoothPermissionLauncher
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import android.widget.Toast
+import androidx.compose.foundation.clickable
 import androidx.compose.ui.res.painterResource
 import com.swadratna.swadratna_staff.R
 
@@ -64,13 +74,22 @@ fun OrdersScreen(
     modifier: Modifier = Modifier,
     navController: NavController,
     orderID: String?,
-    viewModel: OrderManagementViewModel
+    viewModel: OrderManagementViewModel,
+    kotViewModel: KotViewModel = hiltViewModel()
 ) {
     val orderDetailsXState by viewModel.detailedOrderState.collectAsStateWithLifecycle()
+    val kotStatusUpdateState by kotViewModel.kotStatusUpdateState.collectAsStateWithLifecycle()
 
     LaunchedEffect(orderID) {
         orderID?.let {
             viewModel.getOrderDetail(it)
+        }
+    }
+
+    LaunchedEffect(kotStatusUpdateState) {
+        if (kotStatusUpdateState is KotStatusUpdateState.Success) {
+            orderID?.let { viewModel.getOrderDetail(it) }
+            kotViewModel.resetStatusUpdateState()
         }
     }
 
@@ -125,9 +144,16 @@ fun OrdersScreen(
 
             is OrderDetailsXState.Success -> {
                 val orderDetails = (orderDetailsXState as OrderDetailsXState.Success).order
-                SuccessLayout(userHaveOrders,orderDetails, Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues))
+                SuccessLayout(
+                    userHaveOrders,
+                    orderDetails,
+                    Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues),
+                    onUpdateKotStatus = { kotId, status ->
+                        kotViewModel.updateKotStatus(kotId, status)
+                    }
+                )
             }
 
             is OrderDetailsXState.Error -> {
@@ -162,7 +188,12 @@ fun OrdersScreen(
 
 
 @Composable
-fun SuccessLayout(userHaveOrders :Boolean, orderDetails: OrderDetailsX, modifier: Modifier) {
+fun SuccessLayout(
+    userHaveOrders: Boolean,
+    orderDetails: OrderDetailsX,
+    modifier: Modifier,
+    onUpdateKotStatus: (Int, String) -> Unit
+) {
     if (userHaveOrders) {
         LazyColumn(
             modifier = modifier,
@@ -183,11 +214,12 @@ fun SuccessLayout(userHaveOrders :Boolean, orderDetails: OrderDetailsX, modifier
                 )
             }
 
-            items(orderDetails.kots) { kot ->
+            items(orderDetails.kots.orEmpty()) { kot ->
                 KotCard(
                     kot = kot,
-                    tableLabel = orderDetails?.table?.table_id,
-                    customerName = orderDetails?.user?.name
+                    tableLabel = orderDetails.table?.table_id,
+                    customerName = orderDetails.user?.name,
+                    onUpdateStatus = onUpdateKotStatus
                 )
             }
 
@@ -256,16 +288,22 @@ fun OrderSummaryCard(order: OrderXX) {
 }
 
 @Composable
-fun KotCard(kot: KotX, tableLabel: String?, customerName: String?) {
+fun KotCard(
+    kot: KotX,
+    tableLabel: String?,
+    customerName: String?,
+    onUpdateStatus: (Int, String) -> Unit
+) {
     val context = LocalContext.current
+    var showStatusDialog by remember { mutableStateOf(false) }
 
     val performPrint = rememberBluetoothPermissionLauncher {
-        val kotItems = kot.items.map {
+        val kotItems = kot.items?.map {
             BillPrinterUtil.Companion.KotPrintingItem(
                 menu_name = it.menu_item.name,
                 quantity = it.quantity
             )
-        }
+        } ?: emptyList()
 
         var createdAt = Date()
         try {
@@ -293,6 +331,17 @@ fun KotCard(kot: KotX, tableLabel: String?, customerName: String?) {
         }
     }
 
+    if (showStatusDialog) {
+        StatusUpdateDialog(
+            currentStatus = kot.status,
+            onDismiss = { showStatusDialog = false },
+            onStatusSelected = { newStatus ->
+                onUpdateStatus(kot.id, newStatus)
+                showStatusDialog = false
+            }
+        )
+    }
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(MaterialTheme.colorScheme.surface),
@@ -311,11 +360,23 @@ fun KotCard(kot: KotX, tableLabel: String?, customerName: String?) {
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold
                     )
-                    Text(
-                        text = kot.status.uppercase(),
-                        style = MaterialTheme.typography.labelLarge,
-                        color = getStatusColor(kot.status)
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.clickable { showStatusDialog = true }
+                    ) {
+                        Text(
+                            text = kot.status.uppercase(),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = getStatusColor(kot.status)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = "Edit Status",
+                            modifier = Modifier.size(16.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
                 }
 
                 IconButton(onClick = {
@@ -361,6 +422,56 @@ fun KotCard(kot: KotX, tableLabel: String?, customerName: String?) {
             }
         }
     }
+}
+
+@Composable
+fun StatusUpdateDialog(
+    currentStatus: String,
+    onDismiss: () -> Unit,
+    onStatusSelected: (String) -> Unit
+) {
+    val statuses = listOf("pending", "prepared", "served", "cancelled")
+    var selectedStatus by remember { mutableStateOf(currentStatus.lowercase()) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(text = "Update KOT Status") },
+        text = {
+            Column {
+                statuses.forEach { status ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { selectedStatus = status }
+                            .padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = (status == selectedStatus),
+                            onClick = { selectedStatus = status }
+                        )
+                        Text(
+                            text = status.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() },
+                            style = MaterialTheme.typography.bodyLarge,
+                            modifier = Modifier.padding(start = 8.dp)
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { onStatusSelected(selectedStatus) }
+            ) {
+                Text("Update")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
 }
 
 // ---------------------------------------------------------------------------------------------

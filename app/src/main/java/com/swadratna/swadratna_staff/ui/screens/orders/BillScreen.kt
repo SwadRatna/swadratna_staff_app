@@ -2,6 +2,7 @@ package com.swadratna.swadratna_staff.ui.screens.orders
 
 import android.content.Intent
 import android.net.Uri
+import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -114,58 +115,66 @@ fun PayBillScreen(
     val shareBill = remember(billDetail, currentStaffUser, currentBill) {
         { phoneNumber: String? ->
             billDetail?.let { bill ->
-                val file = BillPrinterUtil.generatePdfFile(
-                    context = context,
-                    billDetail = bill,
-                    storeAddress = currentStaffUser?.location?.address,
-                    storeName = "SWAD RATNA",
-                    storePhone = currentStaffUser?.location?.location_mobile_number,
-                    customerName = currentBill?.customerName,
-                    customerMobile = null,
-                    cashierName = currentStaffUser?.username
-                )
+                // Generate Text
+                val sb = StringBuilder()
+                sb.append("*SWAD RATNA*\n")
+                currentStaffUser?.location?.address?.let { addr ->
+                    if (addr.locality.isNotBlank()) sb.append("${addr.locality}, ")
+                    if (addr.city.isNotBlank()) sb.append("${addr.city}")
+                    sb.append("\n")
+                }
+                sb.append("\n")
+                sb.append("Bill No: ${bill.bill.billNumber}\n")
+                val date = try {
+                    val sdf = SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault())
+                    sdf.format(SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault()).parse(bill.bill.createdAt) ?: java.util.Date())
+                } catch (e: Exception) { bill.bill.createdAt }
+                sb.append("Date: $date\n")
 
-                file?.let { pdfFile ->
-                    val uri = androidx.core.content.FileProvider.getUriForFile(
-                        context,
-                        "${context.packageName}.fileprovider",
-                        pdfFile
-                    )
-                    
-                    val message = "Thank you for dining with Swad Ratna! Here is your bill.\n\nTotal Amount: ₹${"%.2f".format(bill.bill.totalAmount)}\n\nVisit us again!"
+                if (!currentBill?.customerName.isNullOrBlank()) {
+                    sb.append("Customer: ${currentBill?.customerName}\n")
+                }
+                
+                sb.append("\n*Items:*\n")
+                bill.lineItems.forEach { item ->
+                    sb.append("${item.menuItem.name} x ${item.quantity} = ₹${"%.2f".format(item.totalPrice)}\n")
+                }
+                
+                sb.append("\n")
+                sb.append("Subtotal: ₹${"%.2f".format(bill.bill.subTotal)}\n")
+                if (bill.bill.taxAmount > 0) sb.append("Tax: ₹${"%.2f".format(bill.bill.taxAmount)}\n")
+                if (bill.bill.discountAmount > 0) sb.append("Discount: -₹${"%.2f".format(bill.bill.discountAmount)}\n")
+                sb.append("*Grand Total: ₹${"%.2f".format(bill.bill.totalAmount)}*\n")
+                
+                sb.append("\nThank you for dining with Swad Ratna! Visit us again!\n")
 
-                    if (!phoneNumber.isNullOrBlank()) {
-                        // Try to share directly to WhatsApp number
-                        try {
-                            val whatsappIntent = Intent(Intent.ACTION_SEND).apply {
-                                type = "application/pdf"
-                                putExtra(Intent.EXTRA_STREAM, uri)
-                                putExtra(Intent.EXTRA_TEXT, message)
-                                putExtra("jid", "$phoneNumber@s.whatsapp.net") // WhatsApp specific
-                                setPackage("com.whatsapp")
-                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                            }
-                            context.startActivity(whatsappIntent)
-                        } catch (e: Exception) {
-                            // Fallback if WhatsApp not installed or fails
-                            val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                                type = "application/pdf"
-                                putExtra(Intent.EXTRA_STREAM, uri)
-                                putExtra(Intent.EXTRA_TEXT, message)
-                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                            }
-                            context.startActivity(Intent.createChooser(shareIntent, "Share Bill"))
+                val message = sb.toString()
+
+                if (!phoneNumber.isNullOrBlank()) {
+                     try {
+                        val cleanPhone = phoneNumber.filter { it.isDigit() }
+                        val finalPhone = if (cleanPhone.length == 10) "91$cleanPhone" else cleanPhone
+                        
+                        val url = "https://api.whatsapp.com/send?phone=$finalPhone&text=${Uri.encode(message)}"
+                        val intent = Intent(Intent.ACTION_VIEW).apply {
+                            data = Uri.parse(url)
+                            setPackage("com.whatsapp")
                         }
-                    } else {
-                         // General share
+                        context.startActivity(intent)
+                    } catch (e: Exception) {
+                        Toast.makeText(context, "WhatsApp not installed or error opening", Toast.LENGTH_SHORT).show()
                         val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                            type = "application/pdf"
-                            putExtra(Intent.EXTRA_STREAM, uri)
+                            type = "text/plain"
                             putExtra(Intent.EXTRA_TEXT, message)
-                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                         }
                         context.startActivity(Intent.createChooser(shareIntent, "Share Bill"))
                     }
+                } else {
+                    val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                        type = "text/plain"
+                        putExtra(Intent.EXTRA_TEXT, message)
+                    }
+                    context.startActivity(Intent.createChooser(shareIntent, "Share Bill"))
                 }
             }
         }
@@ -283,7 +292,9 @@ fun PayBillScreen(
                                             showPaymentDialog = true
                                         },
                                         enabled = isAccepted && !loading, // Enable only if accepted and not loading
-                                        modifier = Modifier.fillMaxWidth().height(50.dp),
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(50.dp),
                                         shape = RoundedCornerShape(8.dp)
                                     ) {
                                         if (loading) {
@@ -535,7 +546,11 @@ fun PayBillScreen(
                                 modifier = Modifier
                                     .height(36.dp)
                                     .clickable { paymentMode = mode }
-                                    .border(1.dp, if(selected) Color.Transparent else MaterialTheme.colorScheme.outline, RoundedCornerShape(8.dp))
+                                    .border(
+                                        1.dp,
+                                        if (selected) Color.Transparent else MaterialTheme.colorScheme.outline,
+                                        RoundedCornerShape(8.dp)
+                                    )
                             ) {
                                 Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 12.dp)) {
                                     Text(mode.uppercase(), color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface)

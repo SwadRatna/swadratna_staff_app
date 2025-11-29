@@ -135,7 +135,7 @@ fun AssignTableDialog(
 
                             Button(
                                 onClick = {
-                                    if (fullName.isNotBlank() && contactInfo.isNotBlank()) {
+                                    if (fullName.isNotBlank()) {
                                         orderManagementViewModel.getOrCreateCustomer(contactInfo, fullName)
                                     }
                                 },

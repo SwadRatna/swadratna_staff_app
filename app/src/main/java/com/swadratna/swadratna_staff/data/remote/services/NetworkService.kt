@@ -16,7 +16,7 @@ data class KotItem(val menuItemId: String, val quantity: Int)
 data class ApproveBillResponse(val message: String)
 
 // 8. PATCH /menuItemAvailability/:location/:menu
-data class AvailabilityRequest(val isAvailable: Boolean)
+data class AvailabilityRequest(val is_available: Boolean)
 data class AvailabilityResponse(val message: String)
 
 // 9. PATCH /staff/bill/{billId}/payment
