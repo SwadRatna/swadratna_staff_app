@@ -22,5 +22,6 @@ data class ParcelOrder(
     val final_amount: Double,
     val customer_name: String?,
     val customer_phone: String?,
-    val customer_email: String?
+    val customer_email: String?,
+    val last_non_served_kot_time: String? = null
 )

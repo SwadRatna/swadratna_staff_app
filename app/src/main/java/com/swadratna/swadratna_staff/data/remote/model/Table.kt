@@ -8,5 +8,6 @@ data class Table(
     val occupancy: Occupancy,
     val qr_code_img_url: String,
     val status: String,
-    val table_id: String
+    val table_id: String,
+    val last_non_served_kot_time: String? = null
 )

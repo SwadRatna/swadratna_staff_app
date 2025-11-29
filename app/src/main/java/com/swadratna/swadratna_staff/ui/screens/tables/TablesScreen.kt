@@ -19,6 +19,8 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.graphics.Color
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.swadratna.swadratna_staff.data.remote.model.Table
@@ -28,6 +30,11 @@ import com.swadratna.swadratna_staff.ui.screens.orders.OrderManagementViewModel
 import com.swadratna.swadratna_staff.ui.screens.orders.TableListState
 import com.swadratna.swadratna_staff.ui.components.SwipeRefreshContainer
 import com.swadratna.swadratna_staff.ui.theme.Red80
+import kotlinx.coroutines.delay
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import java.util.TimeZone
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -113,6 +120,10 @@ fun TablesScreen(navController: NavController,
                                     modifier = Modifier.fillMaxWidth().height(50.dp)
                                 ) {
                                     Text(text = "${parcel.customer_name ?: "Unknown"} - #${parcel.id}")
+                                    if (parcel.last_non_served_kot_time != null) {
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        DelayTimer(startTime = parcel.last_non_served_kot_time)
+                                    }
                                 }
                             }
                         }
@@ -265,11 +276,23 @@ fun TableCard(table: Table, onClick: (Table) -> Unit) {
                 .padding(8.dp),
             verticalArrangement = if(table.is_occupied) Arrangement.SpaceAround else Arrangement.Top
         ) {
-            Text(
-                text = "${table.table_id}.",
-                color = if(table.is_occupied)MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
-                fontSize = 16.sp
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "${table.table_id}.",
+                    color = if(table.is_occupied)MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
+                    fontSize = 16.sp
+                )
+                if (table.is_occupied && table.last_non_served_kot_time != null) {
+                    DelayTimer(
+                        startTime = table.last_non_served_kot_time,
+                        textColor = MaterialTheme.colorScheme.onPrimary
+                    )
+                }
+            }
             if (table.is_occupied) {
                 Text(
                     text = "${table.occupancy.user_name}",
@@ -281,4 +304,57 @@ fun TableCard(table: Table, onClick: (Table) -> Unit) {
             }
         }
     }
+}
+
+@Composable
+fun DelayTimer(startTime: String, modifier: Modifier = Modifier, textColor: Color = Color.Red) {
+    var timeText by remember { mutableStateOf("00:00") }
+
+    LaunchedEffect(startTime) {
+        while (true) {
+            val now = System.currentTimeMillis()
+            var startMillis = 0L
+            
+            try {
+                // Try parsing with milliseconds first
+                val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault())
+                sdf.timeZone = TimeZone.getTimeZone("UTC")
+                startMillis = sdf.parse(startTime)?.time ?: now
+            } catch (e: Exception) {
+                try {
+                    // Fallback to no milliseconds
+                    val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.getDefault())
+                    sdf.timeZone = TimeZone.getTimeZone("UTC")
+                    startMillis = sdf.parse(startTime)?.time ?: now
+                } catch (e2: Exception) {
+                    startMillis = now
+                }
+            }
+
+            val diff = now - startMillis
+
+            if (diff > 0) {
+                val seconds = (diff / 1000) % 60
+                val minutes = (diff / (1000 * 60)) % 60
+                val hours = (diff / (1000 * 60 * 60))
+
+                timeText = if (hours > 0) {
+                    String.format("%02d:%02d:%02d", hours, minutes, seconds)
+                } else {
+                    String.format("%02d:%02d", minutes, seconds)
+                }
+            } else {
+                timeText = "00:00"
+            }
+            delay(1000)
+        }
+    }
+
+    Text(
+        text = timeText,
+        style = MaterialTheme.typography.labelMedium,
+        color = textColor,
+        fontWeight = FontWeight.Bold,
+        modifier = modifier
+    )
 }
