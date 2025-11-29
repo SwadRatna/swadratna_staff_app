@@ -201,6 +201,17 @@ fun StaffProfileScreen(
                 defaultPrinterName = name ?: "None Selected"
             }
 
+            ProfileSection(title = "Management") {
+                ProfileMenuItem(
+                    icon = ImageVector.vectorResource(R.drawable.ic_recipt),
+                    title = "Sales Report",
+                    subtitle = "View daily sales and transactions",
+                    onClick = { navController.navigate(NavigationRoute.SalesReport.route) }
+                )
+            }
+            
+            Spacer(modifier = Modifier.height(16.dp))
+
             val performSelectPrinter = rememberBluetoothPermissionLauncher {
                 BillPrinterUtil.selectDefaultPrinter(context) { success, msg ->
                     if (success) {

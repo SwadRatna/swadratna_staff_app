@@ -31,6 +31,7 @@ import com.swadratna.swadratna_staff.data.remote.model.FreeTableRequest
 import com.swadratna.swadratna_staff.data.remote.model.FreeTableResponse
 import com.swadratna.swadratna_staff.data.remote.services.RecordPaymentRequest
 import com.swadratna.swadratna_staff.data.remote.services.RecordPaymentResponse
+import com.swadratna.swadratna_staff.data.remote.model.SalesResponse
 
 data class BillActionRequest(
     val action: String,
@@ -124,5 +125,18 @@ interface ApiService {
         @Path("billId") billId: Int,
         @Body request: RecordPaymentRequest
     ): Response<RecordPaymentResponse>
+
+    @GET("/api/v1/staff/sales")
+    suspend fun getSales(
+        @Query("date") date: String? = null,
+        @Query("from_date") fromDate: String? = null,
+        @Query("to_date") toDate: String? = null,
+        @Query("location_ids") locationIds: String? = null,
+        @Query("min_amount") minAmount: Double? = null,
+        @Query("max_amount") maxAmount: Double? = null,
+        @Query("page") page: Int? = 1,
+        @Query("limit") limit: Int? = 20,
+        @Query("order_type") orderType: String? = null
+    ): Response<SalesResponse>
 
 }

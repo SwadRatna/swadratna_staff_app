@@ -54,6 +54,7 @@ import com.swadratna.swadratna_staff.ui.screens.login.LoginScreen
 import com.swadratna.swadratna_staff.ui.screens.orders.PayBillScreen
 import com.swadratna.swadratna_staff.ui.screens.profile.StaffProfileScreen
 import com.swadratna.swadratna_staff.ui.screens.kot.KotListScreen
+import com.swadratna.swadratna_staff.ui.screens.sales.SalesReportScreen
 import com.swadratna.swadratna_staff.ui.theme.fontFamily
 import com.swadratna.swadratna_staff.ui.components.InAppNotificationCard
 import com.swadratna.swadratna_staff.ui.components.LocalNotificationManager
@@ -272,6 +273,9 @@ fun NavigationComponent(
             composable(route = NavigationRoute.KotList.route) {
                 KotListScreen(navController = navController)
             }
+            composable(route = NavigationRoute.SalesReport.route) {
+                SalesReportScreen(navController = navController)
+            }
         }
         
             // Show in-app notification card if there's a current notification
@@ -387,4 +391,5 @@ sealed class NavigationRoute(val route: String, val title: String, val icon: Int
         fun createRoute(orderId: String) = "bill/$orderId"
     }
     object KotList : NavigationRoute("kot_list", "KOTs", R.drawable.ic_kot)
+    object SalesReport : NavigationRoute("sales_report", "Sales", R.drawable.ic_recipt)
 }
