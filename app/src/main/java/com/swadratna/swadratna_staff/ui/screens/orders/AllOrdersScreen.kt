@@ -25,6 +25,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -37,6 +38,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -46,6 +48,13 @@ import com.swadratna.swadratna_staff.data.remote.model.KotX
 import com.swadratna.swadratna_staff.data.remote.model.OrderDetailsX
 import com.swadratna.swadratna_staff.data.remote.model.OrderXX
 import com.swadratna.swadratna_staff.navigation.NavigationRoute
+import com.swadratna.swadratna_staff.utils.BillPrinterUtil
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import android.widget.Toast
+import androidx.compose.ui.res.painterResource
+import com.swadratna.swadratna_staff.R
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -174,7 +183,11 @@ fun SuccessLayout(userHaveOrders :Boolean, orderDetails: OrderDetailsX, modifier
             }
 
             items(orderDetails.kots) { kot ->
-                KotCard(kot)
+                KotCard(
+                    kot = kot,
+                    tableLabel = orderDetails.table.table_id,
+                    customerName = orderDetails.user.name
+                )
             }
 
         }
@@ -242,7 +255,8 @@ fun OrderSummaryCard(order: OrderXX) {
 }
 
 @Composable
-fun KotCard(kot: KotX) {
+fun KotCard(kot: KotX, tableLabel: String?, customerName: String?) {
+    val context = LocalContext.current
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(MaterialTheme.colorScheme.surface),
@@ -252,18 +266,57 @@ fun KotCard(kot: KotX) {
             // KOT Header
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "KOT #${kot.kot_number}",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Text(
-                    text = kot.status.uppercase(),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = getStatusColor(kot.status)
-                )
+                Column {
+                    Text(
+                        text = "KOT #${kot.kot_number}",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        text = kot.status.uppercase(),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = getStatusColor(kot.status)
+                    )
+                }
+
+                IconButton(onClick = {
+                    val kotItems = kot.items.map {
+                        BillPrinterUtil.Companion.KotPrintingItem(
+                            menu_name = it.menu_item.name,
+                            quantity = it.quantity
+                        )
+                    }
+
+                    var createdAt = Date()
+                    try {
+                        val isoFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault())
+                        createdAt = isoFormat.parse(kot.created_at) ?: Date()
+                    } catch (e: Exception) {
+                        try {
+                            val isoFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.getDefault())
+                            createdAt = isoFormat.parse(kot.created_at) ?: Date()
+                        } catch (e2: Exception) {
+                            e2.printStackTrace()
+                        }
+                    }
+
+                    val kotText = BillPrinterUtil.generateKOT(
+                        kotItems = kotItems,
+                        headerLeft = "KOT #${kot.kot_number}",
+                        tableLabel = tableLabel,
+                        customerName = customerName,
+                        createdAt = createdAt
+                    )
+
+                    BillPrinterUtil.printWithChooser(context, kotText) { success, msg ->
+                        Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                    }
+                }) {
+                    Icon(painter = painterResource(R.drawable.ic_recipt), contentDescription = "Print KOT")
+                }
             }
             Spacer(modifier = Modifier.height(8.dp))
             Divider()
