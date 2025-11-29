@@ -185,8 +185,8 @@ fun SuccessLayout(userHaveOrders :Boolean, orderDetails: OrderDetailsX, modifier
             items(orderDetails.kots) { kot ->
                 KotCard(
                     kot = kot,
-                    tableLabel = orderDetails.table.table_id,
-                    customerName = orderDetails.user.name
+                    tableLabel = orderDetails?.table?.table_id,
+                    customerName = orderDetails?.user?.name
                 )
             }
 

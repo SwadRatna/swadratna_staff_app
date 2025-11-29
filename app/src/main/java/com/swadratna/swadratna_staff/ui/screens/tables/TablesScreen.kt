@@ -5,6 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -68,41 +69,84 @@ fun TablesScreen(navController: NavController,
                     Text(text = (tableListState as TableListState.Error).message, color = MaterialTheme.colorScheme.error, modifier = Modifier.align(Alignment.Center))
                 }
                 is TableListState.Success -> {
-                    val tables = (tableListState as TableListState.Success).tables.tables
-                    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                        Button(
-                            onClick = { showParcelDialog = true },
-                            modifier = Modifier.fillMaxWidth().height(50.dp)
-                        ) {
-                            Text(text = "Parcel")
+                    val response = (tableListState as TableListState.Success).tables
+                    val tables = response.tables
+                    val parcelOrders = response.parcel_orders
+
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(3),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        // Create Parcel Button
+                        item(span = { GridItemSpan(3) }) {
+                            Button(
+                                onClick = { showParcelDialog = true },
+                                modifier = Modifier.fillMaxWidth().height(50.dp)
+                            ) {
+                                Text(text = "Create Parcel")
+                            }
                         }
 
-                        LazyVerticalGrid(
-                            columns = GridCells.Fixed(3),
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                            horizontalArrangement = Arrangement.spacedBy(16.dp)
-                        ) {
-                            items(tables, key = { it.id }) { table ->
-                                TableCard(
-                                    table = table,
-                                    onClick = { clickedTable ->
-                                        if (!clickedTable.is_occupied) {
-                                            selectedTable = clickedTable
-                                            showDialog = true
-                                        } else {
-                                            navController.navigate(
-                                                NavigationRoute.OrderTaking.createRoute(
-                                                    tableNumber = clickedTable.id,
-                                                    orderId = clickedTable.occupancy.order_id,
-                                                    showMenuTab = true,
-                                                    showOrdersTab = true,
-                                                    defaultTab = 0
-                                                )
-                                            )
-                                        }
-                                    }
+                        // Active Parcels
+                        if (parcelOrders.isNotEmpty()) {
+                            item(span = { GridItemSpan(3) }) {
+                                Text(
+                                    text = "Active Parcels",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    modifier = Modifier.padding(vertical = 8.dp)
                                 )
                             }
+                            items(parcelOrders, span = { GridItemSpan(3) }) { parcel ->
+                                Button(
+                                    onClick = {
+                                        navController.navigate(
+                                            NavigationRoute.OrderTaking.createRoute(
+                                                tableNumber = 0,
+                                                orderId = parcel.id,
+                                                showMenuTab = true,
+                                                showOrdersTab = true,
+                                                defaultTab = 0
+                                            )
+                                        )
+                                    },
+                                    modifier = Modifier.fillMaxWidth().height(50.dp)
+                                ) {
+                                    Text(text = "${parcel.customer_name ?: "Unknown"} - #${parcel.id}")
+                                }
+                            }
+                        }
+
+                        // Tables Header
+                        item(span = { GridItemSpan(3) }) {
+                            Text(
+                                text = "Tables",
+                                style = MaterialTheme.typography.titleMedium,
+                                modifier = Modifier.padding(vertical = 8.dp)
+                            )
+                        }
+
+                        // Tables Grid
+                        items(tables, key = { it.id }) { table ->
+                            TableCard(
+                                table = table,
+                                onClick = { clickedTable ->
+                                    if (!clickedTable.is_occupied) {
+                                        selectedTable = clickedTable
+                                        showDialog = true
+                                    } else {
+                                        navController.navigate(
+                                            NavigationRoute.OrderTaking.createRoute(
+                                                tableNumber = clickedTable.id,
+                                                orderId = clickedTable.occupancy.order_id,
+                                                showMenuTab = true,
+                                                showOrdersTab = true,
+                                                defaultTab = 0
+                                            )
+                                        )
+                                    }
+                                }
+                            )
                         }
                     }
                 }
