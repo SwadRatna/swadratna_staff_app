@@ -39,6 +39,9 @@ fun SalesReportScreen(
 
     val context = LocalContext.current
     val calendar = Calendar.getInstance()
+    
+    var expanded by remember { mutableStateOf(false) }
+    var datePickerTarget by remember { mutableStateOf("single") } // "single", "from", "to"
 
     // Date Picker Logic
     val datePickerDialog = remember {
@@ -48,7 +51,13 @@ fun SalesReportScreen(
                 val cal = Calendar.getInstance()
                 cal.set(year, month, dayOfMonth)
                 val format = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-                viewModel.setDateFilter(format.format(cal.time))
+                val dateStr = format.format(cal.time)
+                
+                when (datePickerTarget) {
+                    "single" -> viewModel.setDateFilter(dateStr)
+                    "from" -> viewModel.setFromDate(dateStr)
+                    "to" -> viewModel.setToDate(dateStr)
+                }
             },
             calendar.get(Calendar.YEAR),
             calendar.get(Calendar.MONTH),
@@ -61,25 +70,12 @@ fun SalesReportScreen(
             TopAppBar(
                 title = {
                     Column {
-                        Text("Sale List", fontWeight = FontWeight.Bold)
-                        Text(
-                            "FAST v39.0 | 7906897228 | 1913", // Placeholder/Hardcoded from screenshot
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Color.White.copy(alpha = 0.7f)
-                        )
+                        Text("Sale Report", fontWeight = FontWeight.Bold)
                     }
                 },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                actions = {
-                    IconButton(onClick = { /* Search */ }) {
-                        Icon(Icons.Default.Search, contentDescription = "Search")
-                    }
-                    IconButton(onClick = { /* More options */ }) {
-                        Icon(Icons.Default.MoreVert, contentDescription = "More")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -89,33 +85,6 @@ fun SalesReportScreen(
                     actionIconContentColor = Color.White
                 )
             )
-        },
-        bottomBar = {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Button(
-                    onClick = { /* Visualize */ },
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(end = 8.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-                ) {
-                    Text("VISUALIZE")
-                }
-                Button(
-                    onClick = { /* New Sale */ },
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(start = 8.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-                ) {
-                    Text("NEW SALE")
-                }
-            }
         }
     ) { paddingValues ->
         Column(
@@ -134,51 +103,100 @@ fun SalesReportScreen(
             ) {
                 Column(modifier = Modifier.padding(8.dp)) {
                     // Date Type Selector (Today/Custom)
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { /* Show selection dialog */ }
-                            .border(1.dp, Color.LightGray, RoundedCornerShape(4.dp))
-                            .padding(12.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(if (selectedDate != null) "Today" else "Custom Range") // Simplified logic
-                        Icon(Icons.Default.ArrowDropDown, contentDescription = null)
+                    Box {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { expanded = true }
+                                .border(1.dp, Color.LightGray, RoundedCornerShape(4.dp))
+                                .padding(12.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            val label = when {
+                                selectedDate != null -> "Single Date"
+                                fromDate != null || toDate != null -> "Date Range"
+                                else -> "Lifetime"
+                            }
+                            Text(label) 
+                            Icon(Icons.Default.ArrowDropDown, contentDescription = null)
+                        }
+
+                        DropdownMenu(
+                            expanded = expanded,
+                            onDismissRequest = { expanded = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("Today") },
+                                onClick = {
+                                    val cal = Calendar.getInstance()
+                                    val format = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+                                    viewModel.setDateFilter(format.format(cal.time))
+                                    expanded = false
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Yesterday") },
+                                onClick = {
+                                    viewModel.setYesterdayFilter()
+                                    expanded = false
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Tomorrow") },
+                                onClick = {
+                                    viewModel.setTomorrowFilter()
+                                    expanded = false
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("This Week") },
+                                onClick = {
+                                    viewModel.setThisWeekFilter()
+                                    expanded = false
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("This Month") },
+                                onClick = {
+                                    viewModel.setThisMonthFilter()
+                                    expanded = false
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("This Year") },
+                                onClick = {
+                                    viewModel.setThisYearFilter()
+                                    expanded = false
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Lifetime") },
+                                onClick = {
+                                    viewModel.setLifetimeFilter()
+                                    expanded = false
+                                }
+                            )
+                        }
                     }
 
                     Spacer(modifier = Modifier.height(8.dp))
 
                     // Date Display
                     Row(modifier = Modifier.fillMaxWidth()) {
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .border(1.dp, Color.LightGray, RoundedCornerShape(4.dp))
-                                .clickable { datePickerDialog.show() }
-                                .padding(12.dp)
-                        ) {
-                            Text(
-                                text = selectedDate ?: fromDate ?: "Start Date",
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                            Icon(
-                                Icons.Default.ArrowDropDown,
-                                contentDescription = null,
-                                modifier = Modifier.align(Alignment.CenterEnd)
-                            )
-                        }
-                        
-                        if (selectedDate == null) { // Show second date box only for range
-                            Spacer(modifier = Modifier.width(8.dp))
+                        if (selectedDate != null) {
                             Box(
                                 modifier = Modifier
                                     .weight(1f)
                                     .border(1.dp, Color.LightGray, RoundedCornerShape(4.dp))
+                                    .clickable { 
+                                        datePickerTarget = "single"
+                                        datePickerDialog.show() 
+                                    }
                                     .padding(12.dp)
                             ) {
                                 Text(
-                                    text = toDate ?: "End Date",
+                                    text = selectedDate ?: "Select Date",
                                     style = MaterialTheme.typography.bodyMedium
                                 )
                                 Icon(
@@ -188,15 +206,41 @@ fun SalesReportScreen(
                                 )
                             }
                         } else {
-                             Spacer(modifier = Modifier.width(8.dp))
                             Box(
                                 modifier = Modifier
                                     .weight(1f)
                                     .border(1.dp, Color.LightGray, RoundedCornerShape(4.dp))
+                                    .clickable { 
+                                        datePickerTarget = "from"
+                                        datePickerDialog.show() 
+                                    }
                                     .padding(12.dp)
                             ) {
                                 Text(
-                                    text = selectedDate ?: "",
+                                    text = fromDate ?: "From Date",
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                                Icon(
+                                    Icons.Default.ArrowDropDown,
+                                    contentDescription = null,
+                                    modifier = Modifier.align(Alignment.CenterEnd)
+                                )
+                            }
+                            
+                            Spacer(modifier = Modifier.width(8.dp))
+                            
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .border(1.dp, Color.LightGray, RoundedCornerShape(4.dp))
+                                    .clickable { 
+                                        datePickerTarget = "to"
+                                        datePickerDialog.show() 
+                                    }
+                                    .padding(12.dp)
+                            ) {
+                                Text(
+                                    text = toDate ?: "To Date",
                                     style = MaterialTheme.typography.bodyMedium
                                 )
                                 Icon(
@@ -228,6 +272,7 @@ fun SalesReportScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
+                            .height(60.dp)
                             .padding(horizontal = 8.dp)
                     ) {
                         // Amount Card
@@ -242,7 +287,7 @@ fun SalesReportScreen(
                             Column(modifier = Modifier.padding(8.dp)) {
                                 Text("Amount", fontSize = 12.sp, color = Color.Gray)
                                 Text(
-                                    "₹${state.data.totalAmount}",
+                                    "₹${state.data.summary.totalAmount}",
                                     fontSize = 18.sp,
                                     fontWeight = FontWeight.Bold
                                 )
@@ -274,7 +319,7 @@ fun SalesReportScreen(
                                 ) {
                                     Text("Count", fontSize = 12.sp, color = Color.Gray)
                                     Text(
-                                        "${state.data.totalCount}",
+                                        "${state.data.summary.count}",
                                         fontSize = 18.sp,
                                         fontWeight = FontWeight.Bold
                                     )
@@ -306,16 +351,19 @@ fun SalesReportScreen(
                     }
 
                     // List
-                    LazyColumn(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(top = 8.dp),
-                        contentPadding = PaddingValues(bottom = 16.dp)
-                    ) {
-                        items(state.data.sales) { sale ->
-                            SaleItemCard(sale)
+                    state?.data?.sales?.let {
+                        LazyColumn(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(top = 8.dp),
+                            contentPadding = PaddingValues(bottom = 16.dp)
+                        ) {
+                            items(it) { sale ->
+                                SaleItemCard(sale)
+                            }
                         }
                     }
+
                 }
             }
         }
@@ -346,7 +394,7 @@ fun SaleItemCard(sale: SaleTransaction) {
                             .padding(horizontal = 6.dp, vertical = 2.dp)
                     ) {
                         Text(
-                            text = sale.tableName ?: sale.orderType ?: "Order #${sale.id}",
+                            text = if (sale.orderType.isNullOrEmpty()) "Order #${sale.id}" else sale.orderType,
                             fontWeight = FontWeight.Bold,
                             fontSize = 14.sp
                         )
@@ -355,7 +403,7 @@ fun SaleItemCard(sale: SaleTransaction) {
 
                 // Right: Bill No | Date
                 Text(
-                    text = "${sale.billNumber} | ${formatDate(sale.date)}",
+                    text = "${sale.billNumber} | ${formatDate(sale.createdAt)}",
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.DarkGray
@@ -372,12 +420,16 @@ fun SaleItemCard(sale: SaleTransaction) {
                 // Amount | Status
                 Column {
                     Text(
-                        text = buildString {
-                            append("₹${sale.amount}")
-                            append(" | ")
-                            append(sale.status)
-                        },
-                        color = Color(0xFF008000), // Green
+                            text = buildString {
+                                append("₹${sale.amount}")
+                                append(" | ")
+                                append(sale.status)
+                                if (!sale.paymentMode.isNullOrEmpty()) {
+                                    append(" | ")
+                                    append(sale.paymentMode)
+                                }
+                            },
+                            color = Color(0xFF008000), // Green
                         fontWeight = FontWeight.Bold,
                         fontSize = 16.sp
                     )
@@ -393,23 +445,23 @@ fun SaleItemCard(sale: SaleTransaction) {
                 }
 
                 // Actions
-                Column(horizontalAlignment = Alignment.End) {
-                    Icon(
-                        imageVector = Icons.Default.Check,
-                        contentDescription = "Paid",
-                        tint = Color(0xFF008000),
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    OutlinedButton(
-                        onClick = { /* Sale Return */ },
-                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
-                        modifier = Modifier.height(32.dp),
-                        shape = RoundedCornerShape(4.dp)
-                    ) {
-                        Text("Sale Return", fontSize = 12.sp, color = MaterialTheme.colorScheme.primary)
-                    }
-                }
+//                Column(horizontalAlignment = Alignment.End) {
+//                    Icon(
+//                        imageVector = Icons.Default.Check,
+//                        contentDescription = "Paid",
+//                        tint = Color(0xFF008000),
+//                        modifier = Modifier.size(16.dp)
+//                    )
+//                    Spacer(modifier = Modifier.height(4.dp))
+//                    OutlinedButton(
+//                        onClick = { /* Sale Return */ },
+//                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
+//                        modifier = Modifier.height(32.dp),
+//                        shape = RoundedCornerShape(4.dp)
+//                    ) {
+//                        Text("Sale Return", fontSize = 12.sp, color = MaterialTheme.colorScheme.primary)
+//                    }
+//                }
             }
         }
     }

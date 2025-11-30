@@ -6,6 +6,7 @@ import com.swadratna.swadratna_staff.data.local.dao.StaffUserDao
 import com.swadratna.swadratna_staff.data.remote.model.KotItemX
 import com.swadratna.swadratna_staff.data.remote.model.KotStatusUpdateResponse
 import com.swadratna.swadratna_staff.data.remote.repositories.KotRepository
+import com.swadratna.swadratna_staff.utils.permissions.PermissionManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -34,8 +35,11 @@ sealed class KotStatusUpdateState {
 @HiltViewModel
 class KotViewModel @Inject constructor(
     private val kotRepository: KotRepository,
-    private val staffUserDao: StaffUserDao
+    private val staffUserDao: StaffUserDao,
+    val permissionManager: PermissionManager
 ) : ViewModel() {
+
+    val permissions = permissionManager.currentUserPermissions
 
     private val _kotListState = MutableStateFlow<KotListState>(KotListState.Loading)
     val kotListState: StateFlow<KotListState> = _kotListState.asStateFlow()

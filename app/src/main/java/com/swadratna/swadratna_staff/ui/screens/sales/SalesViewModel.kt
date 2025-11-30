@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.swadratna.swadratna_staff.data.remote.model.SalesResponse
 import com.swadratna.swadratna_staff.data.remote.repositories.SalesRepository
+import com.swadratna.swadratna_staff.utils.permissions.PermissionManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -22,8 +23,11 @@ sealed class SalesUiState {
 
 @HiltViewModel
 class SalesViewModel @Inject constructor(
-    private val repository: SalesRepository
+    private val repository: SalesRepository,
+    val permissionManager: PermissionManager
 ) : ViewModel() {
+
+    val permissions = permissionManager.currentUserPermissions
 
     private val _uiState = MutableStateFlow<SalesUiState>(SalesUiState.Loading)
     val uiState: StateFlow<SalesUiState> = _uiState.asStateFlow()
@@ -84,6 +88,72 @@ class SalesViewModel @Inject constructor(
         _selectedDate.value = null
         _fromDate.value = from
         _toDate.value = to
+        fetchSales()
+    }
+
+    fun setFromDate(date: String) {
+        _fromDate.value = date
+        _selectedDate.value = null
+        fetchSales()
+    }
+
+    fun setToDate(date: String) {
+        _toDate.value = date
+        _selectedDate.value = null
+        fetchSales()
+    }
+
+    fun setYesterdayFilter() {
+        val cal = java.util.Calendar.getInstance()
+        cal.add(java.util.Calendar.DATE, -1)
+        val date = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(cal.time)
+        setDateFilter(date)
+    }
+
+    fun setTomorrowFilter() {
+        val cal = java.util.Calendar.getInstance()
+        cal.add(java.util.Calendar.DATE, 1)
+        val date = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(cal.time)
+        setDateFilter(date)
+    }
+
+    fun setThisWeekFilter() {
+        val cal = java.util.Calendar.getInstance()
+        cal.set(java.util.Calendar.DAY_OF_WEEK, cal.firstDayOfWeek)
+        val from = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(cal.time)
+        
+        val cal2 = java.util.Calendar.getInstance()
+        val to = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(cal2.time)
+        
+        setDateRangeFilter(from, to)
+    }
+
+    fun setThisMonthFilter() {
+        val cal = java.util.Calendar.getInstance()
+        cal.set(java.util.Calendar.DAY_OF_MONTH, 1)
+        val from = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(cal.time)
+        
+        val cal2 = java.util.Calendar.getInstance()
+        val to = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(cal2.time)
+        
+        setDateRangeFilter(from, to)
+    }
+
+    fun setThisYearFilter() {
+        val cal = java.util.Calendar.getInstance()
+        cal.set(java.util.Calendar.DAY_OF_YEAR, 1)
+        val from = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(cal.time)
+        
+        val cal2 = java.util.Calendar.getInstance()
+        val to = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(cal2.time)
+        
+        setDateRangeFilter(from, to)
+    }
+
+    fun setLifetimeFilter() {
+        _selectedDate.value = null
+        _fromDate.value = null
+        _toDate.value = null
         fetchSales()
     }
 

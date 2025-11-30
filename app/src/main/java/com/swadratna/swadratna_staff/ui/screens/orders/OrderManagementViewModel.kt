@@ -16,6 +16,7 @@ import com.swadratna.swadratna_staff.data.remote.repositories.OrderManagementRep
 import com.swadratna.swadratna_staff.data.remote.model.OrderDetailsX
 import com.swadratna.swadratna_staff.data.remote.model.BillDetail
 import com.swadratna.swadratna_staff.data.remote.model.FreeTableResponse
+import com.swadratna.swadratna_staff.utils.permissions.PermissionManager
 
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -88,8 +89,11 @@ sealed class CreateParcelOrderState {
 @HiltViewModel
 class OrderManagementViewModel @Inject constructor(
     private val repository: OrderManagementRepository,
-    private val staffUserDao: StaffUserDao
+    private val staffUserDao: StaffUserDao,
+    val permissionManager: PermissionManager
 ) : ViewModel() {
+
+    val permissions = permissionManager.currentUserPermissions
 
     private val _tableListState = MutableStateFlow<TableListState>(TableListState.Loading)
     val tableListState: StateFlow<TableListState> = _tableListState

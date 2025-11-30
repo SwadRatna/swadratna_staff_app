@@ -6,6 +6,7 @@ import com.swadratna.swadratna_staff.data.local.dao.StaffUserDao
 import com.swadratna.swadratna_staff.data.remote.model.OrderListItem
 import com.swadratna.swadratna_staff.data.remote.model.PaginationInfo
 import com.swadratna.swadratna_staff.data.remote.repositories.OrderManagementRepository
+import com.swadratna.swadratna_staff.utils.permissions.PermissionManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,8 +22,12 @@ import javax.inject.Inject
 @HiltViewModel
 class OrdersDashboardViewModel @Inject constructor(
     private val orderManagementRepository: OrderManagementRepository,
-    private val staffUserDao: StaffUserDao
+    private val staffUserDao: StaffUserDao,
+    val permissionManager: PermissionManager
 ) : ViewModel() {
+    
+    val permissions = permissionManager.currentUserPermissions
+
     val staffLocationId: StateFlow<Int?> = staffUserDao.getLoggedInStaffUser()
         .map { staffUser -> staffUser?.location?.id }
         .stateIn(

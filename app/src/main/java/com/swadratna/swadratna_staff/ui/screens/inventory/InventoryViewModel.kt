@@ -7,6 +7,7 @@ import com.swadratna.swadratna_staff.data.remote.model.Category
 import com.swadratna.swadratna_staff.data.remote.model.MenuItem
 import com.swadratna.swadratna_staff.data.remote.repositories.ApiResult
 import com.swadratna.swadratna_staff.data.remote.repositories.InventoryManagementRepository
+import com.swadratna.swadratna_staff.utils.permissions.PermissionManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.* // Import all from flow
 import kotlinx.coroutines.launch
@@ -15,8 +16,11 @@ import javax.inject.Inject
 @HiltViewModel
 class InventoryViewModel @Inject constructor(
     private val repository: InventoryManagementRepository,
-    private val staffUserDao: StaffUserDao
+    private val staffUserDao: StaffUserDao,
+    val permissionManager: PermissionManager
 ) : ViewModel() {
+
+    val permissions = permissionManager.currentUserPermissions
 
     private val _loading = MutableStateFlow(false)
     val loading: StateFlow<Boolean> = _loading

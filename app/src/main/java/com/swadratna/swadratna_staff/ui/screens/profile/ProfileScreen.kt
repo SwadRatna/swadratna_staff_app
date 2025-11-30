@@ -32,6 +32,7 @@ import com.swadratna.swadratna_staff.ui.theme.RedGrey20
 import androidx.compose.ui.platform.LocalContext
 import android.widget.Toast
 import com.swadratna.swadratna_staff.utils.BillPrinterUtil
+import com.swadratna.swadratna_staff.utils.permissions.Permissions
 import com.swadratna.swadratna_staff.utils.rememberBluetoothPermissionLauncher
 import kotlinx.coroutines.launch
 
@@ -45,6 +46,8 @@ fun StaffProfileScreen(
     val staffUser by viewModel.staffUser.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val isLoggedOut by viewModel.logoutSuccess.collectAsState()
+    val permissions by viewModel.permissionManager.currentUserPermissions.collectAsState()
+
 
     LaunchedEffect(isLoggedOut) {
         if(isLoggedOut) {
@@ -201,16 +204,18 @@ fun StaffProfileScreen(
                 defaultPrinterName = name ?: "None Selected"
             }
 
-            ProfileSection(title = "Management") {
-                ProfileMenuItem(
-                    icon = ImageVector.vectorResource(R.drawable.ic_recipt),
-                    title = "Sales Report",
-                    subtitle = "View daily sales and transactions",
-                    onClick = { navController.navigate(NavigationRoute.SalesReport.route) }
-                )
+            if(permissions.contains(Permissions.REPORTS_VIEW)) {
+                ProfileSection(title = "Management") {
+                    ProfileMenuItem(
+                        icon = ImageVector.vectorResource(R.drawable.ic_recipt),
+                        title = "Sales Report",
+                        subtitle = "View daily sales and transactions",
+                        onClick = { navController.navigate(NavigationRoute.SalesReport.route) }
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
             }
-            
-            Spacer(modifier = Modifier.height(16.dp))
 
             val performSelectPrinter = rememberBluetoothPermissionLauncher {
                 BillPrinterUtil.selectDefaultPrinter(context) { success, msg ->

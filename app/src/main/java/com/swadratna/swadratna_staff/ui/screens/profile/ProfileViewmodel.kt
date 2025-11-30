@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.swadratna.swadratna_staff.data.local.dao.StaffUserDao
 import com.swadratna.swadratna_staff.data.remote.repositories.AuthRepository
+import com.swadratna.swadratna_staff.utils.permissions.PermissionManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import com.swadratna.swadratna_staff.data.local.entities.StaffUser
@@ -15,8 +16,11 @@ import javax.inject.Inject
 @HiltViewModel
 class ProfileViewmodel @Inject constructor(
     private val authRepository: AuthRepository,
-    private val staffUserDao: StaffUserDao
+    private val staffUserDao: StaffUserDao,
+    val permissionManager: PermissionManager
 ) : ViewModel() {
+
+    val permissions = permissionManager.currentUserPermissions
 
     private val _username = MutableStateFlow("")
     val username: StateFlow<String> = _username
