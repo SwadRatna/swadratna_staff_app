@@ -126,7 +126,7 @@ interface ApiService {
         @Body request: RecordPaymentRequest
     ): Response<RecordPaymentResponse>
 
-    @GET("/api/v1/staff/bills")
+    @GET("/api/v1/admin/sales")
     suspend fun getSales(
         @Query("date") date: String? = null,
         @Query("from_date") fromDate: String? = null,

@@ -22,9 +22,11 @@ import javax.inject.Singleton
 object NetworkModule {
 
     const val BASE_URL = "https://swad-ratna-akk6v.ondigitalocean.app"
-    const val EXTERNAL_BASE_URL = "http://api.recruitassitant.xyz"
     const val X_KEY_HEADER = "X-Key"
     const val X_KEY_VALUE = "ikekk23nnjk3km33"
+
+//    const val X_KEY_VALUE = "RMWvXbJYiKDtjtCEj03iGP"
+
 
     @Provides
     @Singleton
