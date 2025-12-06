@@ -89,6 +89,9 @@ dependencies {
     // Thermal Printer for ESC/POS printing
     implementation("com.github.DantSu:ESCPOS-ThermalPrinter-Android:3.3.0")
     
+    // ZXing for QR Code generation
+    implementation("com.google.zxing:core:3.5.2")
+
     // Room
     implementation(libs.room.runtime)
     implementation(libs.room.ktx)

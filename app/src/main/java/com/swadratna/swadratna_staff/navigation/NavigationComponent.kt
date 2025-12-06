@@ -278,6 +278,9 @@ fun NavigationComponent(
             composable(route = NavigationRoute.SalesReport.route) {
                 SalesReportScreen(navController = navController)
             }
+            composable(route = NavigationRoute.TableManager.route) {
+                com.swadratna.swadratna_staff.ui.screens.tables.TableManagerScreen(navController = navController)
+            }
         }
         
             // Show in-app notification card if there's a current notification
@@ -396,4 +399,5 @@ sealed class NavigationRoute(val route: String, val title: String, val icon: Int
     }
     object KotList : NavigationRoute("kot_list", "KOTs", R.drawable.ic_kot)
     object SalesReport : NavigationRoute("sales_report", "Sales", R.drawable.ic_recipt)
+    object TableManager : NavigationRoute("table_manager", "Table Manager", R.drawable.ic_launcher_foreground) // Placeholder icon
 }

@@ -217,6 +217,17 @@ fun StaffProfileScreen(
                 Spacer(modifier = Modifier.height(16.dp))
             }
 
+            ProfileSection(title = "Table Management") {
+                ProfileMenuItem(
+                    icon = ImageVector.vectorResource(R.drawable.ic_table),
+                    title = "Table QR Manager",
+                    subtitle = "Generate and print table QR codes",
+                    onClick = { navController.navigate(NavigationRoute.TableManager.route) }
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
             val performSelectPrinter = rememberBluetoothPermissionLauncher {
                 BillPrinterUtil.selectDefaultPrinter(context) { success, msg ->
                     if (success) {
