@@ -24,10 +24,12 @@ sealed class SalesUiState {
 @HiltViewModel
 class SalesViewModel @Inject constructor(
     private val repository: SalesRepository,
-    val permissionManager: PermissionManager
+    val permissionManager: PermissionManager,
+    private val networkMonitor: com.swadratna.swadratna_staff.utils.network.NetworkMonitor
 ) : ViewModel() {
 
     val permissions = permissionManager.currentUserPermissions
+    val isOnline = networkMonitor.isOnline
 
     private val _uiState = MutableStateFlow<SalesUiState>(SalesUiState.Loading)
     val uiState: StateFlow<SalesUiState> = _uiState.asStateFlow()

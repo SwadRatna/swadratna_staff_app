@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
 import javax.inject.Named
 import javax.inject.Singleton
+import com.swadratna.swadratna_staff.utils.network.NetworkMonitor
 
 /**
  * Repository for authentication operations in staff applications.
@@ -22,11 +23,15 @@ import javax.inject.Singleton
 class AuthRepository @Inject constructor(
     @Named("unauthenticated") private val apiService: ApiService,
     private val tokenManager: TokenManager,
-    private val staffUserDao: StaffUserDao
+    private val staffUserDao: StaffUserDao,
+    private val networkMonitor: NetworkMonitor
 ) {
 
     @RequiresApi(Build.VERSION_CODES.O)
     suspend fun login(loginRequest: LoginRequest): Result<Staff_User> {
+        if (!networkMonitor.isOnline.value) {
+            return Result.failure(Exception("No network connection"))
+        }
         return try {
             val response = apiService.login(loginRequest)
             if (response.isSuccessful) {

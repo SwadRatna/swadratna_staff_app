@@ -37,6 +37,7 @@ import com.swadratna.swadratna_staff.data.remote.model.BillDetail
 import com.swadratna.swadratna_staff.data.remote.model.StaffRole
 import com.swadratna.swadratna_staff.utils.BillPrinterUtil
 import com.swadratna.swadratna_staff.utils.rememberBluetoothPermissionLauncher
+import com.swadratna.swadratna_staff.ui.components.NetworkTopSnackbarHost
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.TimeZone
@@ -89,6 +90,7 @@ fun PayBillScreen(
     val context = LocalContext.current
     val role by viewModel.staffRole.collectAsStateWithLifecycle()
     val loading by viewModel.loading.collectAsStateWithLifecycle()
+    val isOnline by viewModel.isOnline.collectAsStateWithLifecycle()
 
     var showPaymentDialog by remember { mutableStateOf(false) }
     var paymentMode by remember { mutableStateOf("cash") }
@@ -526,6 +528,11 @@ fun PayBillScreen(
                     Text("Error loading bill", color = MaterialTheme.colorScheme.error)
                 }
             }
+            NetworkTopSnackbarHost(
+                isOnline = isOnline,
+                onRefresh = { orderId?.let { viewModel.getBillDetails(it) } },
+                modifier = Modifier.align(Alignment.TopCenter).padding(8.dp)
+            )
         }
     }
 

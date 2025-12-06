@@ -55,6 +55,10 @@ import com.swadratna.swadratna_staff.R
 import com.swadratna.swadratna_staff.data.remote.model.OrderListItem
 import com.swadratna.swadratna_staff.navigation.NavigationRoute
 import com.swadratna.swadratna_staff.ui.components.SearchBar
+import kotlinx.coroutines.delay
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import com.swadratna.swadratna_staff.ui.components.NetworkTopSnackbarHost
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -69,9 +73,23 @@ fun OrderDashboard(
     val error by viewModel.error.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
     val selectedFilter by viewModel.selectedFilter.collectAsState()
+    val isOnline by viewModel.isOnline.collectAsState()
 
     LaunchedEffect(Unit) {
         viewModel.fetchOrders()
+    }
+
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(30_000)
+            viewModel.refreshOrders()
+        }
+    }
+
+    LaunchedEffect(isOnline) {
+        if (isOnline) {
+            viewModel.refreshOrders()
+        }
     }
 
     Box(modifier = modifier.fillMaxSize()) {
@@ -105,7 +123,7 @@ fun OrderDashboard(
                         CircularProgressIndicator(modifier = Modifier.size(48.dp))
                     }
                 }
-                error != null && orders.isEmpty() -> {
+                error != null && orders.isEmpty() && isOnline -> {
                     // Show error state
                     ErrorState(
                         error = error,
@@ -144,6 +162,12 @@ fun OrderDashboard(
                 CircularProgressIndicator(modifier = Modifier.size(36.dp))
             }
         }
+
+        NetworkTopSnackbarHost(
+            isOnline = isOnline,
+            onRefresh = { viewModel.refreshOrders() },
+            modifier = Modifier.align(Alignment.TopCenter).padding(8.dp)
+        )
     }
 }
 

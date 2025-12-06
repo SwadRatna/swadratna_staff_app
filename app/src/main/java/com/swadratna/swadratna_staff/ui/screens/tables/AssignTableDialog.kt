@@ -36,6 +36,7 @@ fun AssignTableDialog(
     tableNumber: String,
     onDismiss: () -> Unit,
     onTableOccupied: (String) -> Unit,
+    onDone: (() -> Unit)? = null,
     orderManagementViewModel: OrderManagementViewModel = hiltViewModel()
 ) {
     var fullName by remember { mutableStateOf("") }
@@ -96,6 +97,7 @@ fun AssignTableDialog(
                                 }
                                 Button(onClick = {
                                     resetTableOccupancyLocalData(orderManagementViewModel)
+                                    onDone?.invoke()
                                     onDismiss() }) {
                                     Text("Done")
                                 }

@@ -17,6 +17,7 @@ import com.swadratna.swadratna_staff.data.remote.model.OrderDetailsX
 import com.swadratna.swadratna_staff.data.remote.model.BillDetail
 import com.swadratna.swadratna_staff.data.remote.model.FreeTableResponse
 import com.swadratna.swadratna_staff.utils.permissions.PermissionManager
+import com.swadratna.swadratna_staff.utils.network.NetworkMonitor
 
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -90,10 +91,12 @@ sealed class CreateParcelOrderState {
 class OrderManagementViewModel @Inject constructor(
     private val repository: OrderManagementRepository,
     private val staffUserDao: StaffUserDao,
-    val permissionManager: PermissionManager
+    val permissionManager: PermissionManager,
+    private val networkMonitor: NetworkMonitor
 ) : ViewModel() {
 
     val permissions = permissionManager.currentUserPermissions
+    val isOnline = networkMonitor.isOnline
 
     private val _tableListState = MutableStateFlow<TableListState>(TableListState.Loading)
     val tableListState: StateFlow<TableListState> = _tableListState
@@ -236,11 +239,38 @@ class OrderManagementViewModel @Inject constructor(
     fun getTables(locationId: Int) {
         viewModelScope.launch {
             _isRefreshing.value = true // Set refreshing to true
-            _tableListState.value = TableListState.Loading // Emit Loading state
+            if (_tableListState.value !is TableListState.Success) {
+                _tableListState.value = TableListState.Loading // Emit Loading state only if not already Success
+            }
             repository.getTablesByLocation(locationId)
                 .onSuccess { _tableListState.value = TableListState.Success(it) } // Emit Success state
-                .onFailure { _tableListState.value = TableListState.Error(it.message ?: "Unknown error") } // Emit Error state
+                .onFailure { 
+                    if (_tableListState.value !is TableListState.Success) {
+                        _tableListState.value = TableListState.Error(it.message ?: "Unknown error") 
+                    }
+                } // Emit Error state only if not Success
             _isRefreshing.value = false
+        }
+    }
+
+    fun getTablesSilent(locationId: Int) {
+        viewModelScope.launch {
+            repository.getTablesByLocation(locationId)
+                .onSuccess { newResponse ->
+                    val currentState = _tableListState.value
+                    if (currentState is TableListState.Success) {
+                        if (currentState.tables != newResponse) {
+                            _tableListState.value = TableListState.Success(newResponse)
+                        }
+                    } else {
+                        _tableListState.value = TableListState.Success(newResponse)
+                    }
+                }
+                .onFailure {
+                     if (_tableListState.value !is TableListState.Success) {
+                         _tableListState.value = TableListState.Error(it.message ?: "Unknown error")
+                    }
+                }
         }
     }
 
@@ -286,13 +316,17 @@ class OrderManagementViewModel @Inject constructor(
 
     fun getOrderDetail(orderID: String) {
         viewModelScope.launch {
-            _detailedOrderState.value = OrderDetailsXState.Loading
+            if (_detailedOrderState.value !is OrderDetailsXState.Success) {
+                _detailedOrderState.value = OrderDetailsXState.Loading
+            }
             repository.getOrderDetail(orderID)
                 .onSuccess {
                     _detailedOrderState.value = OrderDetailsXState.Success(it)
                 }
                 .onFailure {
-                    _detailedOrderState.value = OrderDetailsXState.Error(it.message ?: "Unknown error fetching order details")
+                    if (_detailedOrderState.value !is OrderDetailsXState.Success) {
+                        _detailedOrderState.value = OrderDetailsXState.Error(it.message ?: "Unknown error fetching order details")
+                    }
                 }
         }
     }
@@ -303,13 +337,17 @@ class OrderManagementViewModel @Inject constructor(
 
     fun getBillDetails(orderId: String) {
         viewModelScope.launch {
-            _billDetailsState.value = BillDetailsState.Loading
+            if (_billDetailsState.value !is BillDetailsState.Success) {
+                _billDetailsState.value = BillDetailsState.Loading
+            }
             repository.getBillDetails(orderId)
                 .onSuccess {
                     _billDetailsState.value = BillDetailsState.Success(it)
                 }
                 .onFailure {
-                    _billDetailsState.value = BillDetailsState.Error(it.message ?: "Unknown error fetching bill details")
+                    if (_billDetailsState.value !is BillDetailsState.Success) {
+                        _billDetailsState.value = BillDetailsState.Error(it.message ?: "Unknown error fetching bill details")
+                    }
                 }
         }
     }

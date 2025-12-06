@@ -26,6 +26,8 @@ import com.swadratna.swadratna_staff.data.remote.model.SaleTransaction
 import java.text.SimpleDateFormat
 import java.util.*
 
+import com.swadratna.swadratna_staff.ui.components.NetworkTopSnackbarHost
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SalesReportScreen(
@@ -36,8 +38,16 @@ fun SalesReportScreen(
     val selectedDate by viewModel.selectedDate.collectAsState()
     val fromDate by viewModel.fromDate.collectAsState()
     val toDate by viewModel.toDate.collectAsState()
+    val isOnline by viewModel.isOnline.collectAsState()
 
     val context = LocalContext.current
+    
+    LaunchedEffect(isOnline) {
+        if (isOnline) {
+            viewModel.refresh()
+        }
+    }
+
     val calendar = Calendar.getInstance()
     
     var expanded by remember { mutableStateOf(false) }
@@ -87,14 +97,14 @@ fun SalesReportScreen(
             )
         }
     ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .padding(paddingValues)
-                .fillMaxSize()
-                .background(Color(0xFFF5F5F5))
-        ) {
-            // Filter Section
-            Card(
+        Box(modifier = Modifier.padding(paddingValues).fillMaxSize()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color(0xFFF5F5F5))
+            ) {
+                // Filter Section
+                Card(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(8.dp),
@@ -366,6 +376,13 @@ fun SalesReportScreen(
 
                 }
             }
+            }
+
+            NetworkTopSnackbarHost(
+                isOnline = isOnline,
+                onRefresh = { viewModel.refresh() },
+                modifier = Modifier.align(Alignment.TopCenter)
+            )
         }
     }
 }
@@ -469,17 +486,20 @@ fun SaleItemCard(sale: SaleTransaction) {
 
 fun formatDate(dateString: String): String {
     return try {
-        val inputFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault()) // Adjust format as needed
+        val inputFormat = SimpleDateFormat(
+            "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'",
+            Locale.getDefault()
+        ) // Adjust format as needed
         val outputFormat = SimpleDateFormat("dd/MM/yy", Locale.getDefault())
         val date = inputFormat.parse(dateString) ?: return dateString
         outputFormat.format(date)
     } catch (e: Exception) {
         try {
-             // Fallback for simpler format
-             val inputFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-             val outputFormat = SimpleDateFormat("dd/MM/yy", Locale.getDefault())
-             val date = inputFormat.parse(dateString) ?: return dateString
-             outputFormat.format(date)
+            // Fallback for simpler format
+            val inputFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+            val outputFormat = SimpleDateFormat("dd/MM/yy", Locale.getDefault())
+            val date = inputFormat.parse(dateString) ?: return dateString
+            outputFormat.format(date)
         } catch (e2: Exception) {
             dateString
         }

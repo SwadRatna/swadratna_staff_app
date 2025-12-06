@@ -20,9 +20,12 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.swadratna.swadratna_staff.data.remote.model.KotItemX
 import com.swadratna.swadratna_staff.ui.components.SwipeRefreshContainer
+import com.swadratna.swadratna_staff.ui.components.NetworkTopSnackbarHost
 import java.text.SimpleDateFormat
 import java.util.*
 import com.swadratna.swadratna_staff.R
+import kotlinx.coroutines.delay
+import androidx.compose.ui.platform.LocalContext
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -33,6 +36,19 @@ fun KotListScreen(
     val kotListState by viewModel.kotListState.collectAsState()
     val isRefreshing by viewModel.isRefreshing.collectAsState()
     val showOnlyPending by viewModel.showOnlyPending.collectAsState()
+
+    val isOnline by viewModel.isOnline.collectAsState()
+
+    LaunchedEffect(Unit) {
+        viewModel.refreshKots()
+    }
+
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(30_000)
+            viewModel.refreshKots()
+        }
+    }
 
     var showStatusDialog by remember { mutableStateOf(false) }
     var selectedKot by remember { mutableStateOf<KotItemX?>(null) }
@@ -65,6 +81,11 @@ fun KotListScreen(
                     .fillMaxSize()
                     .padding(paddingValues)
             ) {
+                NetworkTopSnackbarHost(
+                    isOnline = isOnline,
+                    onRefresh = { viewModel.refreshKots() },
+                    modifier = Modifier.align(Alignment.TopCenter)
+                )
                 when (kotListState) {
                     is KotListState.Loading -> {
                         if (!isRefreshing) {
@@ -72,18 +93,20 @@ fun KotListScreen(
                         }
                     }
                     is KotListState.Error -> {
-                        Column(
-                            modifier = Modifier.align(Alignment.Center),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Text(
-                                text = (kotListState as KotListState.Error).message,
-                                color = MaterialTheme.colorScheme.error,
-                                style = MaterialTheme.typography.bodyLarge
-                            )
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Button(onClick = { viewModel.loadKots() }) {
-                                Text("Retry")
+                        if (isOnline) {
+                            Column(
+                                modifier = Modifier.align(Alignment.Center),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(
+                                    text = (kotListState as KotListState.Error).message,
+                                    color = MaterialTheme.colorScheme.error,
+                                    style = MaterialTheme.typography.bodyLarge
+                                )
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Button(onClick = { viewModel.loadKots() }) {
+                                    Text("Retry")
+                                }
                             }
                         }
                     }
@@ -125,6 +148,12 @@ fun KotListScreen(
                     }
                 }
             }
+        }
+    }
+
+    LaunchedEffect(isOnline) {
+        if (isOnline) {
+            viewModel.refreshKots()
         }
     }
 

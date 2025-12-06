@@ -66,6 +66,7 @@ import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.res.painterResource
 import com.swadratna.swadratna_staff.R
+import com.swadratna.swadratna_staff.ui.components.NetworkTopSnackbarHost
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -79,6 +80,7 @@ fun OrdersScreen(
 ) {
     val orderDetailsXState by viewModel.detailedOrderState.collectAsStateWithLifecycle()
     val kotStatusUpdateState by kotViewModel.kotStatusUpdateState.collectAsStateWithLifecycle()
+    val isOnline by viewModel.isOnline.collectAsStateWithLifecycle()
 
     LaunchedEffect(orderID) {
         orderID?.let {
@@ -90,6 +92,12 @@ fun OrdersScreen(
         if (kotStatusUpdateState is KotStatusUpdateState.Success) {
             orderID?.let { viewModel.getOrderDetail(it) }
             kotViewModel.resetStatusUpdateState()
+        }
+    }
+
+    LaunchedEffect(isOnline) {
+        if (isOnline) {
+            orderID?.let { viewModel.getOrderDetail(it) }
         }
     }
 
@@ -139,21 +147,35 @@ fun OrdersScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     CircularProgressIndicator()
+                    NetworkTopSnackbarHost(
+                        isOnline = isOnline,
+                        onRefresh = { orderID?.let { viewModel.getOrderDetail(it) } },
+                        modifier = Modifier.align(Alignment.TopCenter).padding(8.dp)
+                    )
                 }
             }
 
             is OrderDetailsXState.Success -> {
                 val orderDetails = (orderDetailsXState as OrderDetailsXState.Success).order
-                SuccessLayout(
-                    userHaveOrders,
-                    orderDetails,
-                    Modifier
+                Box(
+                    modifier = Modifier
                         .fillMaxSize()
-                        .padding(paddingValues),
-                    onUpdateKotStatus = { kotId, status ->
-                        kotViewModel.updateKotStatus(kotId, status)
-                    }
-                )
+                        .padding(paddingValues)
+                ) {
+                    SuccessLayout(
+                        userHaveOrders,
+                        orderDetails,
+                        Modifier.fillMaxSize(),
+                        onUpdateKotStatus = { kotId, status ->
+                            kotViewModel.updateKotStatus(kotId, status)
+                        }
+                    )
+                    NetworkTopSnackbarHost(
+                        isOnline = isOnline,
+                        onRefresh = { orderID?.let { viewModel.getOrderDetail(it) } },
+                        modifier = Modifier.align(Alignment.TopCenter).padding(8.dp)
+                    )
+                }
             }
 
             is OrderDetailsXState.Error -> {
@@ -164,10 +186,17 @@ fun OrdersScreen(
                         .padding(paddingValues),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = "Error: ${(orderDetailsXState as OrderDetailsXState.Error).message}",
-                        color = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.padding(16.dp)
+                    if (isOnline) {
+                        Text(
+                            text = "Error: ${(orderDetailsXState as OrderDetailsXState.Error).message}",
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.padding(16.dp)
+                        )
+                    }
+                    NetworkTopSnackbarHost(
+                        isOnline = isOnline,
+                        onRefresh = { orderID?.let { viewModel.getOrderDetail(it) } },
+                        modifier = Modifier.align(Alignment.TopCenter).padding(8.dp)
                     )
                 }
             }
@@ -179,6 +208,11 @@ fun OrdersScreen(
                         .padding(paddingValues),
                     contentAlignment = Alignment.Center
                 ) {
+                    NetworkTopSnackbarHost(
+                        isOnline = isOnline,
+                        onRefresh = { orderID?.let { viewModel.getOrderDetail(it) } },
+                        modifier = Modifier.align(Alignment.TopCenter).padding(8.dp)
+                    )
                     Text(text = "Loading order details...")
                 }
             }

@@ -23,8 +23,10 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import com.google.firebase.messaging.FirebaseMessaging
+import androidx.compose.runtime.collectAsState
 import com.swadratna.swadratna_staff.data.remote.repositories.AuthRepository
 import com.swadratna.swadratna_staff.data.remote.repositories.TokenRepository
+import com.swadratna.swadratna_staff.utils.network.NetworkMonitor
 import com.swadratna.swadratna_staff.navigation.NavigationComponent
 import com.swadratna.swadratna_staff.navigation.NavigationRoute
 import com.swadratna.swadratna_staff.ui.components.InAppNotificationManager
@@ -64,6 +66,8 @@ class MainActivity : ComponentActivity() {
     lateinit var authRepository: AuthRepository
     @Inject
     lateinit var tokenRepository: TokenRepository
+    @Inject
+    lateinit var networkMonitor: NetworkMonitor
     
     private lateinit var notificationManager: InAppNotificationManager
     private var isAppInForeground = false
@@ -125,7 +129,9 @@ class MainActivity : ComponentActivity() {
 
                     startDestination?.let { destination ->
                         InAppNotificationProvider(notificationManager = notificationManager) {
-                            NavigationComponent(startDestination = destination)
+                            NavigationComponent(
+                                startDestination = destination
+                            )
                         }
                     }
                 }

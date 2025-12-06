@@ -18,15 +18,18 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import com.swadratna.swadratna_staff.utils.network.NetworkMonitor
 
 @HiltViewModel
 class OrdersDashboardViewModel @Inject constructor(
     private val orderManagementRepository: OrderManagementRepository,
     private val staffUserDao: StaffUserDao,
-    val permissionManager: PermissionManager
+    val permissionManager: PermissionManager,
+    private val networkMonitor: NetworkMonitor
 ) : ViewModel() {
     
     val permissions = permissionManager.currentUserPermissions
+    val isOnline = networkMonitor.isOnline
 
     val staffLocationId: StateFlow<Int?> = staffUserDao.getLoggedInStaffUser()
         .map { staffUser -> staffUser?.location?.id }
@@ -109,8 +112,11 @@ class OrdersDashboardViewModel @Inject constructor(
                 val result = orderManagementRepository.getAllOrders(locationId, page, limit)
                 
                 result.onSuccess { response ->
-                    _allOrders.value = response.orders
-                    _paginationInfo.value = response.pagination
+                    val newOrders = response.orders
+                    if (_allOrders.value != newOrders) {
+                        _allOrders.value = newOrders
+                        _paginationInfo.value = response.pagination
+                    }
                     _loading.value = false
                 }.onFailure { throwable ->
                     _error.value = throwable.message ?: "Unknown error occurred"

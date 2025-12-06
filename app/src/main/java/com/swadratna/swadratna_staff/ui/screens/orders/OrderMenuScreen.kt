@@ -46,6 +46,7 @@ import com.swadratna.swadratna_staff.ui.components.SearchBar
 import com.swadratna.swadratna_staff.ui.components.SlideToConfirm
 import com.swadratna.swadratna_staff.ui.theme.Red80
 import com.swadratna.swadratna_staff.utils.BillPrinterUtil
+import com.swadratna.swadratna_staff.ui.components.NetworkTopSnackbarHost
 import kotlin.collections.component1
 import kotlin.collections.component2
 
@@ -64,6 +65,7 @@ fun OrderMenuScreen(
     val error by viewModel.error.collectAsState()
     val currentOrderItems by viewModel.currentOrderItems.collectAsState()
     val orderConfirmationState by viewModel.orderConfirmationState.collectAsState()
+    val isOnline by viewModel.isOnline.collectAsState()
 
     var selectedCategoryId by remember { mutableStateOf<Int?>(null) }
     var searchQuery by remember { mutableStateOf("") }
@@ -75,6 +77,12 @@ fun OrderMenuScreen(
     LaunchedEffect(staffLocationId) {
         staffLocationId?.let {staffLocationId ->
             viewModel.getMenuItems(staffLocationId, "")
+        }
+    }
+
+    LaunchedEffect(isOnline) {
+        if (isOnline) {
+            staffLocationId?.let { viewModel.getMenuItems(it, "") }
         }
     }
 
@@ -102,7 +110,8 @@ fun OrderMenuScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-        ) {
+        )
+        {
             if (loading) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
@@ -190,6 +199,11 @@ fun OrderMenuScreen(
                     .padding(bottom = 16.dp)
             )
         }
+        NetworkTopSnackbarHost(
+            isOnline = isOnline,
+            onRefresh = { staffLocationId?.let {viewModel.getMenuItems(it, "") } },
+            modifier = Modifier.align(Alignment.TopCenter).padding(8.dp)
+        )
     }
 }
 

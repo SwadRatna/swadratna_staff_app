@@ -23,12 +23,17 @@ import retrofit2.HttpException
 import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Named
+import com.swadratna.swadratna_staff.utils.network.NetworkMonitor
 
 class OrderManagementRepository @Inject constructor(
     @Named("authenticated")  private val apiService: ApiService,
+    private val networkMonitor: NetworkMonitor
 ) {
 
     suspend fun getTablesByLocation(locationId: Int): Result<TableListResponse> {
+        if (!networkMonitor.isOnline.value) {
+            return Result.failure(Exception("No network connection"))
+        }
         return try {
             val response = apiService.getTablesByLocation(locationId)
             if (response.isSuccessful) {
@@ -47,6 +52,9 @@ class OrderManagementRepository @Inject constructor(
         locationId: Int,
         searchQuery: String? = null
     ): Result<MenuResponse> {
+        if (!networkMonitor.isOnline.value) {
+            return Result.failure(Exception("No network connection"))
+        }
         return try {
             val response = apiService.getMenu(locationId, searchQuery)
 
@@ -67,6 +75,9 @@ class OrderManagementRepository @Inject constructor(
     }
 
     suspend fun getOrCreateCustomer(mobile: String?, userName: String?): Result<Customer> {
+        if (!networkMonitor.isOnline.value) {
+            return Result.failure(Exception("No network connection"))
+        }
         return try {
             val response = apiService.getOrCreateCustomer(mobile, userName)
             if (response.isSuccessful) {
@@ -82,6 +93,9 @@ class OrderManagementRepository @Inject constructor(
     }
 
     suspend fun occupyTable(request: OccupyTableRequest): Result<OccupyTableResponse> {
+        if (!networkMonitor.isOnline.value) {
+            return Result.failure(Exception("No network connection"))
+        }
         return try {
             val response = apiService.occupyTable(request)
             if (response.isSuccessful) {
@@ -97,6 +111,9 @@ class OrderManagementRepository @Inject constructor(
     }
 
     suspend fun createKot(kotRequest: KotRequest): Result<KotResponse> {
+        if (!networkMonitor.isOnline.value) {
+            return Result.failure(Exception("No network connection"))
+        }
         return try {
             val response = apiService.createKot(kotRequest)
             if (response.isSuccessful) {
@@ -112,6 +129,9 @@ class OrderManagementRepository @Inject constructor(
     }
 
     suspend fun findBill(orderId: String): Result<CustomerBill> {
+        if (!networkMonitor.isOnline.value) {
+            return Result.failure(Exception("No network connection"))
+        }
         return try {
             val response = apiService.findBill(orderId)
             if (response.isSuccessful) {
@@ -127,6 +147,9 @@ class OrderManagementRepository @Inject constructor(
     }
 
     suspend fun approveBill(approvalAction: String , reason: String, orderId: Int): Result<ApproveBillResponse> {
+        if (!networkMonitor.isOnline.value) {
+            return Result.failure(Exception("No network connection"))
+        }
         return try {
             val request = BillActionRequest(action = approvalAction )
             val response = apiService.updateBillStatus(orderId, request)
@@ -143,6 +166,9 @@ class OrderManagementRepository @Inject constructor(
     }
 
     suspend fun getOrderDetail(orderID: String): Result<OrderDetailsX> {
+        if (!networkMonitor.isOnline.value) {
+            return Result.failure(Exception("No network connection"))
+        }
         return try {
             val response = apiService.getOrderDetail( orderID)
             if (response.isSuccessful) {
@@ -158,8 +184,11 @@ class OrderManagementRepository @Inject constructor(
     }
 
     suspend fun getBillDetails(orderId: String): Result<BillDetail> {
+        if (!networkMonitor.isOnline.value) {
+            return Result.failure(Exception("No network connection"))
+        }
         return try {
-            val response = apiService.getBillDetails("ikekk23nnjk3km33", orderId)
+            val response = apiService.getBillDetails("RMWvXbJYiKDtjtCEj03iGP", orderId)
             if (response.isSuccessful) {
                 response.body()?.let {
                     Result.success(it)
@@ -173,6 +202,9 @@ class OrderManagementRepository @Inject constructor(
     }
 
     suspend fun getAllOrders(locationId: Int, page: Int, limit: Int): Result<AllOrdersResponse> {
+        if (!networkMonitor.isOnline.value) {
+            return Result.failure(Exception("No network connection"))
+        }
         return try {
             val response = apiService.getAllOrders(locationId, page, limit)
             if (response.isSuccessful) {
@@ -188,6 +220,9 @@ class OrderManagementRepository @Inject constructor(
     }
 
     suspend fun freeTheTable(tableId: Int, cancelOrder: Boolean, reason: String): Result<FreeTableResponse> {
+        if (!networkMonitor.isOnline.value) {
+            return Result.failure(Exception("No network connection"))
+        }
         return try {
             val request = FreeTableRequest(cancel_order = cancelOrder, reason = reason)
             val response = apiService.freeTheTable(tableId, request)
@@ -208,6 +243,9 @@ class OrderManagementRepository @Inject constructor(
         customerName: String,
         customerPhone: String
     ): Result<com.swadratna.swadratna_staff.data.remote.services.CreateOrderResponse> {
+        if (!networkMonitor.isOnline.value) {
+            return Result.failure(Exception("No network connection"))
+        }
         return try {
             val request = com.swadratna.swadratna_staff.data.remote.services.CreateOrderRequest(
                 location_id = locationId,
@@ -229,6 +267,9 @@ class OrderManagementRepository @Inject constructor(
     }
 
     suspend fun recordBillPayment(billId: Int, request: RecordPaymentRequest): Result<RecordPaymentResponse> {
+        if (!networkMonitor.isOnline.value) {
+            return Result.failure(Exception("No network connection"))
+        }
         return try {
             val response = apiService.recordBillPayment(billId, request)
             if (response.isSuccessful) {

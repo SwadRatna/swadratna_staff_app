@@ -43,12 +43,30 @@ fun TablesScreen(navController: NavController,
 ) {
     val tableListState by orderManagementViewModel.tableListState.collectAsState()
     val isRefreshing by orderManagementViewModel.isRefreshing.collectAsState()
+    val isOnline by orderManagementViewModel.isOnline.collectAsState()
 
     var showDialog by remember { mutableStateOf(false) }
     var selectedTable by remember { mutableStateOf<Table?>(null) }
     var showParcelDialog by remember { mutableStateOf(false) }
 
     val staffLocationId by orderManagementViewModel.staffLocationId.collectAsState()
+    
+    var timeRemaining by remember { mutableStateOf(30) }
+
+    LaunchedEffect(staffLocationId) {
+        staffLocationId?.let { 
+            orderManagementViewModel.getTables(it)
+            while(true) {
+                delay(1000L)
+                if (timeRemaining > 0) {
+                    timeRemaining--
+                } else {
+                    orderManagementViewModel.getTablesSilent(it)
+                    timeRemaining = 30
+                }
+            }
+        }
+    }
 
     SwipeRefreshContainer(
         isRefreshing = isRefreshing,
@@ -73,7 +91,9 @@ fun TablesScreen(navController: NavController,
                     }
                 }
                 is TableListState.Error -> {
-                    Text(text = (tableListState as TableListState.Error).message, color = MaterialTheme.colorScheme.error, modifier = Modifier.align(Alignment.Center))
+                    if (isOnline) {
+                        Text(text = (tableListState as TableListState.Error).message, color = MaterialTheme.colorScheme.error, modifier = Modifier.align(Alignment.Center))
+                    }
                 }
                 is TableListState.Success -> {
                     val response = (tableListState as TableListState.Success).tables
@@ -85,6 +105,17 @@ fun TablesScreen(navController: NavController,
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                         horizontalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
+                        // Auto Refresh Timer
+                        item(span = { GridItemSpan(3) }) {
+                            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                                Text(
+                                    text = "Auto-refresh in ${timeRemaining}s",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+
                         // Create Parcel Button
                         item(span = { GridItemSpan(3) }) {
                             Button(
@@ -163,6 +194,11 @@ fun TablesScreen(navController: NavController,
                 }
             }
 
+            LaunchedEffect(isOnline) {
+                if (isOnline) {
+                    staffLocationId?.let { orderManagementViewModel.getTablesSilent(it) }
+                }
+            }
             if (showDialog && selectedTable != null) {
                 AssignTableDialog(
                     tableId = selectedTable!!.id,
@@ -178,6 +214,11 @@ fun TablesScreen(navController: NavController,
                             showOrdersTab = true,
                             defaultTab = 0
                         ))
+                    },
+                    onDone = {
+                        staffLocationId?.let { loc ->
+                            orderManagementViewModel.getTables(loc)
+                        }
                     }
                 )
             }
@@ -256,6 +297,11 @@ fun TablesScreen(navController: NavController,
                     }
                 }
             }
+            com.swadratna.swadratna_staff.ui.components.NetworkTopSnackbarHost(
+                isOnline = isOnline,
+                onRefresh = { staffLocationId?.let { orderManagementViewModel.getTables(it) } },
+                modifier = Modifier.align(Alignment.TopCenter)
+            )
         }
     }
 }

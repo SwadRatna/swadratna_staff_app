@@ -12,9 +12,12 @@ import com.swadratna.swadratna_staff.RegisterDeviceTokenRequest
 import com.swadratna.swadratna_staff.ui.DeviceUtils.getUniqueDeviceId
 import javax.inject.Inject
 import javax.inject.Named
+import com.swadratna.swadratna_staff.utils.network.NetworkMonitor
 
 class TokenRepository @Inject constructor(
-    @Named("authenticated") private val apiService: ApiService) {
+    @Named("authenticated") private val apiService: ApiService,
+    private val networkMonitor: NetworkMonitor
+) {
 
     fun FirebaseTokenRegisteration() {
         FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
@@ -32,6 +35,10 @@ class TokenRepository @Inject constructor(
     fun sendTokenToServer(token: String) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
+                if (!networkMonitor.isOnline.value) {
+                    Log.w("FCM_TAG", "Skipping token registration: offline")
+                    return@launch
+                }
                 val request = RegisterDeviceTokenRequest(
                     device_id = getUniqueDeviceId(),
                     fcm_token = token,

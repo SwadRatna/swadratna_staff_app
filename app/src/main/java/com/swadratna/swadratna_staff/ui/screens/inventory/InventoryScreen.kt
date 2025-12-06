@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -28,6 +29,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -47,6 +49,7 @@ import com.swadratna.swadratna_staff.data.remote.model.MenuItem
 import com.swadratna.swadratna_staff.ui.components.CategoryItem
 import com.swadratna.swadratna_staff.ui.components.SearchBar
 import com.swadratna.swadratna_staff.ui.components.SwipeRefreshContainer
+import com.swadratna.swadratna_staff.ui.components.NetworkTopSnackbarHost
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -59,6 +62,13 @@ fun InventoryScreen(viewModel: InventoryViewModel = hiltViewModel()) {
     val filteredMenuItems by viewModel.filteredMenuItems.collectAsState()
     val isLoading by viewModel.loading.collectAsState()
     val locationId by viewModel.staffLocationId.collectAsState()
+    val isOnline by viewModel.isOnline.collectAsState()
+
+    LaunchedEffect(locationId) {
+        locationId?.let {
+            viewModel.getMenuItems(it)
+        }
+    }
 
     SwipeRefreshContainer(
         isRefreshing = isLoading,
@@ -68,7 +78,9 @@ fun InventoryScreen(viewModel: InventoryViewModel = hiltViewModel()) {
             }
         }
     ) {
-        Column(modifier = Modifier.padding(8.dp)) {
+        Box(modifier = Modifier.fillMaxSize()) {
+
+            Column(modifier = Modifier.padding(8.dp)) {
             SearchBar(
                 hintText = "Search Menu Items...",
                 searchQuery, modifier = Modifier
@@ -94,6 +106,13 @@ fun InventoryScreen(viewModel: InventoryViewModel = hiltViewModel()) {
                     }, modifier = Modifier.weight(0.7f)
                 )
             }
+            }
+
+            NetworkTopSnackbarHost(
+                isOnline = isOnline,
+                onRefresh = { locationId?.let { viewModel.getMenuItems(it) } },
+                modifier = Modifier.align(Alignment.TopCenter).padding(8.dp)
+            )
         }
     }
 }

@@ -8,6 +8,7 @@ import com.swadratna.swadratna_staff.data.remote.model.MenuItem
 import com.swadratna.swadratna_staff.data.remote.repositories.ApiResult
 import com.swadratna.swadratna_staff.data.remote.repositories.InventoryManagementRepository
 import com.swadratna.swadratna_staff.utils.permissions.PermissionManager
+import com.swadratna.swadratna_staff.utils.network.NetworkMonitor
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.* // Import all from flow
 import kotlinx.coroutines.launch
@@ -17,10 +18,12 @@ import javax.inject.Inject
 class InventoryViewModel @Inject constructor(
     private val repository: InventoryManagementRepository,
     private val staffUserDao: StaffUserDao,
-    val permissionManager: PermissionManager
+    val permissionManager: PermissionManager,
+    private val networkMonitor: NetworkMonitor
 ) : ViewModel() {
 
     val permissions = permissionManager.currentUserPermissions
+    val isOnline = networkMonitor.isOnline
 
     private val _loading = MutableStateFlow(false)
     val loading: StateFlow<Boolean> = _loading

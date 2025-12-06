@@ -7,6 +7,7 @@ import retrofit2.HttpException
 import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Named
+import com.swadratna.swadratna_staff.utils.network.NetworkMonitor
 
 // Sealed class to represent the result of an API call
 sealed class ApiResult<out T : Any> {
@@ -15,13 +16,17 @@ sealed class ApiResult<out T : Any> {
 }
 
 class InventoryManagementRepository @Inject constructor(
-    @Named("authenticated") private val apiService: ApiService
+    @Named("authenticated") private val apiService: ApiService,
+    private val networkMonitor: NetworkMonitor
 ) {
 
     suspend fun getMenu(
         locationId: Int,
         searchQuery: String? = null
     ): Result<MenuResponse> {
+        if (!networkMonitor.isOnline.value) {
+            return Result.failure(Exception("No network connection"))
+        }
         return try {
             val response = apiService.getMenu(locationId, searchQuery)
 
@@ -43,6 +48,9 @@ class InventoryManagementRepository @Inject constructor(
 
 
     suspend fun updateMenuItemAvailability(locationId: Int, menuId: Int, isAvailable: Boolean): ApiResult<Unit> {
+        if (!networkMonitor.isOnline.value) {
+            return ApiResult.Error(Exception("No network connection"))
+        }
         return try {
             val requestBody = AvailabilityRequest(isAvailable)
             val response = apiService.updateMenuItemAvailability(locationId.toString(), menuId.toString(), requestBody)

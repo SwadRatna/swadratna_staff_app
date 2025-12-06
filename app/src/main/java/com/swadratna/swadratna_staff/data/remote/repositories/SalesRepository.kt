@@ -2,11 +2,13 @@ package com.swadratna.swadratna_staff.data.remote.repositories
 
 import com.swadratna.swadratna_staff.data.remote.model.SalesResponse
 import com.swadratna.swadratna_staff.data.remote.services.ApiService
+import com.swadratna.swadratna_staff.utils.network.NetworkMonitor
 import javax.inject.Inject
 import javax.inject.Named
 
 class SalesRepository @Inject constructor(
-    @Named("authenticated") private val apiService: ApiService
+    @Named("authenticated") private val apiService: ApiService,
+    private val networkMonitor: NetworkMonitor
 ) {
     suspend fun getSales(
         date: String? = null,
@@ -19,6 +21,9 @@ class SalesRepository @Inject constructor(
         limit: Int? = 20,
         orderType: String? = null
     ): Result<SalesResponse> {
+        if (!networkMonitor.isOnline.value) {
+            return Result.failure(Exception("No network connection"))
+        }
         return try {
             val response = apiService.getSales(
                 date = date,

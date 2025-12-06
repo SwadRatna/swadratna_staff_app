@@ -5,15 +5,20 @@ import com.swadratna.swadratna_staff.data.remote.model.KotStatusUpdateRequest
 import com.swadratna.swadratna_staff.data.remote.model.KotStatusUpdateResponse
 import com.swadratna.swadratna_staff.data.remote.services.ApiService
 import retrofit2.HttpException
+import com.swadratna.swadratna_staff.utils.network.NetworkMonitor
 import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Named
 
 class KotRepository @Inject constructor(
-    @Named("authenticated") private val apiService: ApiService
+    @Named("authenticated") private val apiService: ApiService,
+    private val networkMonitor: NetworkMonitor
 ) {
 
     suspend fun getKots(locationId: Int, pendingOnly: Boolean? = null): Result<KotListResponse> {
+        if (!networkMonitor.isOnline.value) {
+            return Result.failure(Exception("No network connection"))
+        }
         return try {
             val response = apiService.getKots(locationId)
             if (response.isSuccessful) {
@@ -33,6 +38,9 @@ class KotRepository @Inject constructor(
     }
 
     suspend fun updateKotStatus(kotId: Int, newStatus: String): Result<KotStatusUpdateResponse> {
+        if (!networkMonitor.isOnline.value) {
+            return Result.failure(Exception("No network connection"))
+        }
         return try {
             val request = KotStatusUpdateRequest(status = newStatus)
             val response = apiService.updateKotStatus(kotId, request)

@@ -59,6 +59,8 @@ import com.swadratna.swadratna_staff.ui.theme.fontFamily
 import com.swadratna.swadratna_staff.ui.components.InAppNotificationCard
 import com.swadratna.swadratna_staff.ui.components.LocalNotificationManager
 
+import androidx.compose.foundation.layout.statusBarsPadding
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NavigationComponent(
@@ -352,6 +354,8 @@ fun NavigationComponent(
                     modifier = Modifier.align(Alignment.Center)
                 )
             }
+
+
         }
     }
 }

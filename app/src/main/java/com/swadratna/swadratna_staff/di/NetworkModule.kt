@@ -23,9 +23,9 @@ object NetworkModule {
 
     const val BASE_URL = "https://swad-ratna-akk6v.ondigitalocean.app"
     const val X_KEY_HEADER = "X-Key"
-    const val X_KEY_VALUE = "ikekk23nnjk3km33"
+//    const val X_KEY_VALUE = "ikekk23nnjk3km33"
 
-//    const val X_KEY_VALUE = "RMWvXbJYiKDtjtCEj03iGP"
+    const val X_KEY_VALUE = "RMWvXbJYiKDtjtCEj03iGP"
 
 
     @Provides

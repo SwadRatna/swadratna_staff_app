@@ -8,6 +8,7 @@ import com.swadratna.swadratna_staff.data.remote.model.KotStatusUpdateResponse
 import com.swadratna.swadratna_staff.data.remote.repositories.KotRepository
 import com.swadratna.swadratna_staff.utils.permissions.PermissionManager
 import dagger.hilt.android.lifecycle.HiltViewModel
+import com.swadratna.swadratna_staff.utils.network.NetworkMonitor
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -36,10 +37,12 @@ sealed class KotStatusUpdateState {
 class KotViewModel @Inject constructor(
     private val kotRepository: KotRepository,
     private val staffUserDao: StaffUserDao,
-    val permissionManager: PermissionManager
+    val permissionManager: PermissionManager,
+    private val networkMonitor: NetworkMonitor
 ) : ViewModel() {
 
     val permissions = permissionManager.currentUserPermissions
+    val isOnline = networkMonitor.isOnline
 
     private val _kotListState = MutableStateFlow<KotListState>(KotListState.Loading)
     val kotListState: StateFlow<KotListState> = _kotListState.asStateFlow()
@@ -72,10 +75,18 @@ class KotViewModel @Inject constructor(
                 _kotListState.value = KotListState.Loading
                 kotRepository.getKots(locationId, _showOnlyPending.value)
                     .onSuccess { response ->
-                        if (response.kots.isEmpty()) {
-                            _kotListState.value = KotListState.Empty
+                        val newKots = response.kots
+                        val currentState = _kotListState.value
+                        if (newKots.isEmpty()) {
+                            if (currentState !is KotListState.Empty) {
+                                _kotListState.value = KotListState.Empty
+                            }
                         } else {
-                            _kotListState.value = KotListState.Success(response.kots)
+                            if (currentState is KotListState.Success && currentState.kots == newKots) {
+                                // No change; keep current state to avoid unnecessary UI updates
+                            } else {
+                                _kotListState.value = KotListState.Success(newKots)
+                            }
                         }
                     }
                     .onFailure { error ->
