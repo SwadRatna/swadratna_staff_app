@@ -158,12 +158,13 @@ class BillPrinterUtil {
             }
 
             // Bill Information - Two columns
-            sb.append("Date: ${formatDate(bill.createdAt)}${" ".repeat(10)}Dine In: ${bill.tableId}\n")
-            sb.append("Time: ${formatTime(bill.createdAt)}\n")
+            sb.append("Date: ${formatDate(bill.createdAt)}${" ".repeat(1)}Time:${formatTime(bill.createdAt)}\n")
+            sb.append("Dine In: ${(bill.tableId)}\n")
             cashierName?.let { cashier ->
-                sb.append("Cashier: ${cashier}${" ".repeat(8)}Bill No.: ${bill.billNumber}\n")
+                sb.append("Cashier: ${cashier}\n")
+                sb.append("Bill Number: ${bill.billNumber}\n")
             } ?: run {
-                sb.append("${" ".repeat(20)}Bill No.: ${bill.billNumber}\n")
+                sb.append("${" ".repeat(2)}Bill No.: ${bill.billNumber}\n")
             }
             sb.append("Token No.: ${bill.orderId}\n")
             sb.append("\n")
@@ -211,30 +212,30 @@ class BillPrinterUtil {
 
             val totalQty = lineItems.sumOf { it.quantity }
             val subTotalStr = String.format("%.2f", bill.subTotal)
-            sb.append("${" ".repeat(8)}Total Qty: ${totalQty}${" ".repeat(3)}Sub: ${subTotalStr}\n")
-            sb.append("${" ".repeat(34)}Total\n")
-
+            sb.append("${" ".repeat(6)}Total Qty: ${totalQty}${" ".repeat(3)}Sub: ${subTotalStr}\n")
+            sb.append("${"-".repeat(32)}\n")
+            sb.append("${" ".repeat(5)}Total\n")
             val sgstAmount = String.format("%.2f", bill.taxAmount / 2)
             val cgstAmount = String.format("%.2f", bill.taxAmount / 2)
-            sb.append("${" ".repeat(20)}SGST 2.5%${" ".repeat(3)}${sgstAmount}\n")
-            sb.append("${" ".repeat(20)}CGST 2.5%${" ".repeat(3)}${cgstAmount}\n")
+            sb.append("${" ".repeat(5)}SGST 2.5%${" ".repeat(10)}${sgstAmount}\n")
+            sb.append("${" ".repeat(5)}CGST 2.5%${" ".repeat(10)}${cgstAmount}\n")
 
             if (bill.serviceCharge > 0) {
                 val serviceChargeStr = String.format("%.2f", bill.serviceCharge)
-                sb.append("${" ".repeat(15)}Service Charge${" ".repeat(3)}${serviceChargeStr}\n")
+                sb.append("${" ".repeat(0)}Service Charge${" ".repeat(10)}${serviceChargeStr}\n")
             }
 
             if (bill.discountAmount > 0) {
                 val roundOffStr = String.format("%.2f", -bill.discountAmount.toDouble())
-                sb.append("${" ".repeat(18)}Round off${" ".repeat(3)}${roundOffStr}\n")
+                sb.append("${" ".repeat(0)}Round off${" ".repeat(10)}${roundOffStr}\n")
             }
 
             val grandTotalStr = String.format("%.2f", bill.totalAmount)
-            sb.append("${" ".repeat(10)}Grand Total ₹ ${grandTotalStr}\n")
+            sb.append("${" ".repeat(0)}Grand Total ₹${" ".repeat(10)}${grandTotalStr}\n")
             sb.append("\n")
 
-            sb.append("${" ".repeat(20)}Thank You,\n")
-            sb.append("${" ".repeat(20)}Visit Again!\n")
+            sb.append("${" ".repeat(10)}Thank You,\n")
+            sb.append("${" ".repeat(10)}Visit Again!\n")
             sb.append("\n\n")
 
             return sb.toString()
