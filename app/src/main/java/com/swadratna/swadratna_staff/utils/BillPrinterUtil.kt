@@ -231,12 +231,10 @@ class BillPrinterUtil {
             }
 
             val grandTotalStr = String.format("%.2f", bill.totalAmount)
+            sb.append("\n\u001B@\n")
             sb.append("${" ".repeat(0)}Grand Total ₹${" ".repeat(10)}${grandTotalStr}\n")
-            sb.append("\n")
-
-            sb.append("${" ".repeat(10)}Thank You,\n")
-            sb.append("${" ".repeat(10)}Visit Again!\n")
-            sb.append("\n\n")
+            sb.append("[C]Thank You,\n")
+            sb.append("[C]Visit Again!\n")
 
             return sb.toString()
         }
