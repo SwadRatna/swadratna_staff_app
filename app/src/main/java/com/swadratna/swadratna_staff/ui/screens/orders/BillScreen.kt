@@ -97,14 +97,14 @@ fun PayBillScreen(
     var transactionId by remember { mutableStateOf("") }
     var paymentNotes by remember { mutableStateOf("") }
     var amountPaidInput by remember { mutableStateOf("") }
-    
+
     // Post Payment Dialog State
     var showPostPaymentDialog by remember { mutableStateOf(false) }
     var postPaymentPhoneNumber by remember { mutableStateOf<String?>(null) }
     var postPaymentAmount by remember { mutableStateOf(0.0) }
 
     val billDetail = (billDetailsState as? BillDetailsState.Success)?.billDetail
-    
+
     // Handle Payment Success
     LaunchedEffect(Unit) {
         viewModel.paymentSuccess.collect { response ->
@@ -136,27 +136,33 @@ fun PayBillScreen(
                 if (!currentBill?.customerName.isNullOrBlank()) {
                     sb.append("Customer: ${currentBill?.customerName}\n")
                 }
-                
+
                 sb.append("\n*Items:*\n")
                 bill.lineItems.forEach { item ->
                     sb.append("${item.menuItem.name} x ${item.quantity} = ₹${"%.2f".format(item.totalPrice)}\n")
                 }
-                
+
                 sb.append("\n")
                 sb.append("Subtotal: ₹${"%.2f".format(bill.bill.subTotal)}\n")
-                if (bill.bill.taxAmount > 0) sb.append("Tax: ₹${"%.2f".format(bill.bill.taxAmount)}\n")
+                if (bill.bill.serviceCharge > 0) sb.append("Service Charge: ₹${"%.2f".format(bill.bill.serviceCharge)}\n")
+                if (bill.bill.taxAmount > 0) {
+                    val sgst = bill.bill.taxAmount / 2
+                    val cgst = bill.bill.taxAmount / 2
+                    sb.append("SGST: ₹${"%.2f".format(sgst)}\n")
+                    sb.append("CGST: ₹${"%.2f".format(cgst)}\n")
+                }
                 if (bill.bill.discountAmount > 0) sb.append("Discount: -₹${"%.2f".format(bill.bill.discountAmount)}\n")
                 sb.append("*Grand Total: ₹${"%.2f".format(bill.bill.totalAmount)}*\n")
-                
+
                 sb.append("\nThank you for dining with Swad Ratna! Visit us again!\n")
 
                 val message = sb.toString()
 
                 if (!phoneNumber.isNullOrBlank()) {
-                     try {
+                    try {
                         val cleanPhone = phoneNumber.filter { it.isDigit() }
                         val finalPhone = if (cleanPhone.length == 10) "91$cleanPhone" else cleanPhone
-                        
+
                         val url = "https://api.whatsapp.com/send?phone=$finalPhone&text=${Uri.encode(message)}"
                         val intent = Intent(Intent.ACTION_VIEW).apply {
                             data = Uri.parse(url)
@@ -191,10 +197,10 @@ fun PayBillScreen(
                 storeName = "SWAD RATNA",
                 storePhone = currentStaffUser?.location?.location_mobile_number,
                 customerName = currentBill?.customerName,
-                customerMobile = null, 
+                customerMobile = null,
                 cashierName = currentStaffUser?.username
             )
-            
+
             BillPrinterUtil.printWithChooser(context, billText) { success, message ->
                 Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
             }
@@ -256,7 +262,7 @@ fun PayBillScreen(
                             val isAccepted = status == BILL_STATUS.ACCEPTED.value.lowercase()
                             val isPending = status == BILL_STATUS.PENDING.value.lowercase()
                             val isHold = status == BILL_STATUS.Hold.value.lowercase()
-                            
+
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -473,6 +479,20 @@ fun PayBillScreen(
                                         color = MaterialTheme.colorScheme.onSurface
                                         , style = MaterialTheme.typography.bodyMedium)
                                 }
+                                if (billDetail.bill.serviceCharge > 0) {
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Text("Service Charge",
+                                            color = MaterialTheme.colorScheme.onSurface,
+                                            style = MaterialTheme.typography.bodyMedium)
+                                        Text("₹${"%.2f".format(billDetail.bill.serviceCharge)}",
+                                            color = MaterialTheme.colorScheme.onSurface,
+                                            style = MaterialTheme.typography.bodyMedium)
+                                    }
+                                }
                                 if (billDetail.bill.discountAmount > 0) {
                                     Spacer(modifier = Modifier.height(4.dp))
                                     Row(
@@ -488,15 +508,29 @@ fun PayBillScreen(
                                     }
                                 }
                                 if (billDetail.bill.taxAmount > 0) {
+                                    val sgst = billDetail.bill.taxAmount / 2
+                                    val cgst = billDetail.bill.taxAmount / 2
                                     Spacer(modifier = Modifier.height(4.dp))
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
                                         horizontalArrangement = Arrangement.SpaceBetween
                                     ) {
-                                        Text("Taxes",
+                                        Text("SGST",
                                             color = MaterialTheme.colorScheme.onSurface,
                                             style = MaterialTheme.typography.bodyMedium)
-                                        Text("₹${"%.2f".format(billDetail.bill.taxAmount)}",
+                                        Text("₹${"%.2f".format(sgst)}",
+                                            color = MaterialTheme.colorScheme.onSurface,
+                                            style = MaterialTheme.typography.bodyMedium)
+                                    }
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Text("CGST",
+                                            color = MaterialTheme.colorScheme.onSurface,
+                                            style = MaterialTheme.typography.bodyMedium)
+                                        Text("₹${"%.2f".format(cgst)}",
                                             color = MaterialTheme.colorScheme.onSurface,
                                             style = MaterialTheme.typography.bodyMedium)
                                     }
@@ -519,7 +553,7 @@ fun PayBillScreen(
                             }
                         }
                     }
-                    
+
                     // Bottom Spacer
                     item { Spacer(modifier = Modifier.height(80.dp)) }
                 }
@@ -611,12 +645,12 @@ fun PayBillScreen(
             }
         )
     }
-    
+
     // Post Payment Success Dialog
     if (showPostPaymentDialog) {
         AlertDialog(
             onDismissRequest = { /* Prevent dismissal without action */ },
-            title = { 
+            title = {
                 Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
                     Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(48.dp))
                     Spacer(modifier = Modifier.height(8.dp))
@@ -652,7 +686,7 @@ fun PayBillScreen(
                         }
                         Spacer(modifier = Modifier.height(8.dp))
                     }
-                    
+
                     OutlinedButton(
                         onClick = {
                             showPostPaymentDialog = false

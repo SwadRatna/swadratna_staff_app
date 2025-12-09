@@ -59,6 +59,7 @@ import kotlinx.coroutines.delay
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import com.swadratna.swadratna_staff.ui.components.NetworkTopSnackbarHost
+import com.swadratna.swadratna_staff.ui.components.SwipeRefreshContainer
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -74,6 +75,7 @@ fun OrderDashboard(
     val searchQuery by viewModel.searchQuery.collectAsState()
     val selectedFilter by viewModel.selectedFilter.collectAsState()
     val isOnline by viewModel.isOnline.collectAsState()
+    val isRefreshing by viewModel.isRefreshing.collectAsState()
 
     LaunchedEffect(Unit) {
         viewModel.fetchOrders()
@@ -92,9 +94,13 @@ fun OrderDashboard(
         }
     }
 
-    Box(modifier = modifier.fillMaxSize()) {
-        Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-            // Search Bar
+    SwipeRefreshContainer(
+        isRefreshing = isRefreshing,
+        onRefresh = { viewModel.refreshOrders() }
+    ) {
+        Box(modifier = modifier.fillMaxSize()) {
+            Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+                // Search Bar
             SearchBar(
                 hintText = "Search Menu Items...",
                 query = searchQuery,
@@ -140,7 +146,7 @@ fun OrderDashboard(
                     // Show orders list
                     LazyColumn(
                         contentPadding = PaddingValues(0.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
                         modifier = Modifier.fillMaxSize()
                     ) {
                         items(orders) { order ->
@@ -169,6 +175,7 @@ fun OrderDashboard(
             modifier = Modifier.align(Alignment.TopCenter).padding(8.dp)
         )
     }
+}
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -307,6 +314,7 @@ fun OrderCard(order: OrderListItem, navController: NavController) {
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         modifier = Modifier
             .fillMaxWidth()
+
             .clickable(enabled = true, onClick = {
                 navController.navigate(NavigationRoute.OrderTaking.createRoute(
                     tableNumber = order.table.id,
@@ -318,7 +326,7 @@ fun OrderCard(order: OrderListItem, navController: NavController) {
             }),
         colors = CardDefaults.cardColors(MaterialTheme.colorScheme.surface)
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
+        Column(modifier = Modifier.padding(16.dp)) {
             // Header: Order ID and Status
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -380,8 +388,8 @@ fun OrderCard(order: OrderListItem, navController: NavController) {
                         Text(
                             text = it,
                             fontSize = 13.sp,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                            fontWeight = FontWeight.Normal,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
@@ -408,7 +416,7 @@ fun OrderCard(order: OrderListItem, navController: NavController) {
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(4.dp))
 
             HorizontalDivider(
                 color = MaterialTheme.colorScheme.outlineVariant,

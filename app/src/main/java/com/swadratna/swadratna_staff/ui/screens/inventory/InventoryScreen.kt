@@ -52,9 +52,19 @@ import com.swadratna.swadratna_staff.ui.components.SwipeRefreshContainer
 import com.swadratna.swadratna_staff.ui.components.NetworkTopSnackbarHost
 
 
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.navigation.NavController
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun InventoryScreen(viewModel: InventoryViewModel = hiltViewModel()) {
+fun InventoryScreen(
+    navController: NavController,
+    viewModel: InventoryViewModel = hiltViewModel()
+) {
 
     val categories by viewModel.categories.collectAsState()
     val selectedCategory by viewModel.selectedCategory.collectAsState()
@@ -70,49 +80,70 @@ fun InventoryScreen(viewModel: InventoryViewModel = hiltViewModel()) {
         }
     }
 
-    SwipeRefreshContainer(
-        isRefreshing = isLoading,
-        onRefresh = {
-            locationId?.let {
-                viewModel.getMenuItems(it)
-            }
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Inventory") },
+                navigationIcon = {
+                    IconButton(onClick = { navController.popBackStack() }) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
+                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
+                )
+            )
         }
-    ) {
-        Box(modifier = Modifier.fillMaxSize()) {
-
-            Column(modifier = Modifier.padding(8.dp)) {
-            SearchBar(
-                hintText = "Search Menu Items...",
-                searchQuery, modifier = Modifier
-                    .fillMaxWidth(),
-                onQueryChanged = { newQuery ->
-                    viewModel.onSearchQueryChanged(newQuery)
+    ) { paddingValues ->
+        Box(modifier = Modifier.padding(paddingValues)) {
+            SwipeRefreshContainer(
+                isRefreshing = isLoading,
+                onRefresh = {
+                    locationId?.let {
+                        viewModel.getMenuItems(it)
+                    }
                 }
-            )
+            ) {
+                Box(modifier = Modifier.fillMaxSize()) {
 
-            Row(modifier = Modifier.padding(8.dp)) {
-                CategoryList(
-                    categories = categories,
-                    selectedCategory = selectedCategory,
-                    onCategorySelected = { category ->
-                        viewModel.onCategorySelected(category)
-                    },
-                    modifier = Modifier.weight(0.3f)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                MenuItemList(
-                    menuItems = filteredMenuItems, onAvailabilityChanged = { item, isAvailable ->
-                        viewModel.onAvailabilityChanged(item, isAvailable)
-                    }, modifier = Modifier.weight(0.7f)
-                )
-            }
-            }
+                    Column(modifier = Modifier.padding(8.dp)) {
+                        SearchBar(
+                            hintText = "Search Menu Items...",
+                            searchQuery, modifier = Modifier
+                                .fillMaxWidth(),
+                            onQueryChanged = { newQuery ->
+                                viewModel.onSearchQueryChanged(newQuery)
+                            }
+                        )
 
-            NetworkTopSnackbarHost(
-                isOnline = isOnline,
-                onRefresh = { locationId?.let { viewModel.getMenuItems(it) } },
-                modifier = Modifier.align(Alignment.TopCenter).padding(8.dp)
-            )
+                        Row(modifier = Modifier.padding(8.dp)) {
+                            CategoryList(
+                                categories = categories,
+                                selectedCategory = selectedCategory,
+                                onCategorySelected = { category ->
+                                    viewModel.onCategorySelected(category)
+                                },
+                                modifier = Modifier.weight(0.3f)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            MenuItemList(
+                                menuItems = filteredMenuItems, onAvailabilityChanged = { item, isAvailable ->
+                                    viewModel.onAvailabilityChanged(item, isAvailable)
+                                }, modifier = Modifier.weight(0.7f)
+                            )
+                        }
+                    }
+
+                    NetworkTopSnackbarHost(
+                        isOnline = isOnline,
+                        onRefresh = { locationId?.let { viewModel.getMenuItems(it) } },
+                        modifier = Modifier.align(Alignment.TopCenter).padding(8.dp)
+                    )
+                }
+            }
         }
     }
 }
@@ -209,10 +240,4 @@ fun MenuItemCard(
             )
         }
     }
-}
-
-@Preview(showBackground = true, widthDp = 411, heightDp = 823)
-@Composable
-fun InventoryScreenPreview() {
-    InventoryScreen()
 }

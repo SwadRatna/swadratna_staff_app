@@ -6,6 +6,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -27,6 +28,8 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 import com.swadratna.swadratna_staff.ui.components.NetworkTopSnackbarHost
+
+import com.swadratna.swadratna_staff.ui.components.SwipeRefreshContainer
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -75,33 +78,14 @@ fun SalesReportScreen(
         )
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text("Sale Report", fontWeight = FontWeight.Bold)
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = Color.White,
-                    navigationIconContentColor = Color.White,
-                    actionIconContentColor = Color.White
-                )
-            )
-        }
-    ) { paddingValues ->
-        Box(modifier = Modifier.padding(paddingValues).fillMaxSize()) {
+    SwipeRefreshContainer(
+        isRefreshing = uiState is SalesUiState.Loading,
+        onRefresh = { viewModel.refresh() }
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color(0xFFF5F5F5))
             ) {
                 // Filter Section
                 Card(
@@ -119,7 +103,7 @@ fun SalesReportScreen(
                                 .fillMaxWidth()
                                 .clickable { expanded = true }
                                 .border(1.dp, Color.LightGray, RoundedCornerShape(4.dp))
-                                .padding(12.dp),
+                                .padding(8.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
@@ -224,7 +208,7 @@ fun SalesReportScreen(
                                         datePickerTarget = "from"
                                         datePickerDialog.show() 
                                     }
-                                    .padding(12.dp)
+                                    .padding(8.dp)
                             ) {
                                 Text(
                                     text = fromDate ?: "From Date",
@@ -247,7 +231,7 @@ fun SalesReportScreen(
                                         datePickerTarget = "to"
                                         datePickerDialog.show() 
                                     }
-                                    .padding(12.dp)
+                                    .padding(8.dp)
                             ) {
                                 Text(
                                     text = toDate ?: "To Date",
@@ -288,7 +272,7 @@ fun SalesReportScreen(
                         // Amount Card
                         Card(
                             modifier = Modifier
-                                .weight(1f)
+                                .weight(1.2f)
                                 .padding(end = 4.dp),
                             colors = CardDefaults.cardColors(containerColor = Color.White),
                             shape = RoundedCornerShape(4.dp),
@@ -315,7 +299,7 @@ fun SalesReportScreen(
                         // Count Card
                         Card(
                             modifier = Modifier
-                                .weight(1f)
+                                .weight(0.8f)
                                 .padding(start = 4.dp),
                             colors = CardDefaults.cardColors(containerColor = Color.White),
                             shape = RoundedCornerShape(4.dp),
@@ -344,7 +328,6 @@ fun SalesReportScreen(
                                 // Filter Icon/Button placeholder
                                 Box(
                                     modifier = Modifier
-                                        .background(Color.LightGray)
                                         .width(40.dp)
                                         .fillMaxHeight()
                                         .clickable { /* Filter */ },
@@ -393,115 +376,119 @@ fun SaleItemCard(sale: SaleTransaction) {
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 8.dp, vertical = 4.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        shape = RoundedCornerShape(8.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color.LightGray)
+        shape = RoundedCornerShape(12.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                // Left: Table/Order Type
-                Column {
-                    Box(
-                        modifier = Modifier
-                            .border(1.dp, Color.Gray, RoundedCornerShape(4.dp))
-                            .padding(horizontal = 6.dp, vertical = 2.dp)
-                    ) {
-                        Text(
-                            text = if (sale.orderType.isNullOrEmpty()) "Order #${sale.id}" else sale.orderType,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp
-                        )
-                    }
-                }
-
-                // Right: Bill No | Date
-                Text(
-                    text = "${sale.billNumber} | ${formatDate(sale.createdAt)}",
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.DarkGray
-                )
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.surface)
+                .padding(16.dp)
+        ) {
+            // Header Row
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Amount | Status
                 Column {
                     Text(
-                            text = buildString {
-                                append("₹${sale.amount}")
-                                append(" | ")
-                                append(sale.status)
-                                if (!sale.paymentMode.isNullOrEmpty()) {
-                                    append(" | ")
-                                    append(sale.paymentMode)
-                                }
-                            },
-                            color = Color(0xFF008000), // Green
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp
+                        text = "Bill #${sale.billNumber}",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
                     )
-                    
-                    if (sale.editedBy != null) {
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = "Edited by ${sale.editedBy} on ${formatDate(sale.editedAt ?: "")}",
-                            fontSize = 10.sp,
-                            color = Color.Gray
-                        )
-                    }
+                    Text(
+                        text = buildString {
+                            append(sale.orderType ?: "Order")
+                            if (!sale.paymentMode.isNullOrEmpty()) {
+                                append(" • ")
+                                append(sale.paymentMode)
+                            }
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                    )
                 }
 
-                // Actions
-//                Column(horizontalAlignment = Alignment.End) {
-//                    Icon(
-//                        imageVector = Icons.Default.Check,
-//                        contentDescription = "Paid",
-//                        tint = Color(0xFF008000),
-//                        modifier = Modifier.size(16.dp)
-//                    )
-//                    Spacer(modifier = Modifier.height(4.dp))
-//                    OutlinedButton(
-//                        onClick = { /* Sale Return */ },
-//                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
-//                        modifier = Modifier.height(32.dp),
-//                        shape = RoundedCornerShape(4.dp)
-//                    ) {
-//                        Text("Sale Return", fontSize = 12.sp, color = MaterialTheme.colorScheme.primary)
-//                    }
-//                }
+                // Status Chip
+                SaleStatusChip(status = sale.status)
             }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Amount
+            Text(
+                text = "₹${sale.amount}",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
+
+            Row(modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween) {
+                if (sale.editedBy != null) {
+                    Text(
+                        text = "Edited by ${sale.editedBy} on ${formatDate(sale.editedAt ?: "")}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                        fontSize = 10.sp
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Timestamp
+                Text(
+                    text = formatDate(sale.createdAt),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                )
+            }
+
         }
     }
 }
 
-fun formatDate(dateString: String): String {
+@Composable
+fun SaleStatusChip(status: String) {
+    val (backgroundColor, contentColor) = when (status.lowercase()) {
+        "paid" -> Pair(MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.onPrimaryContainer)
+        "pending" -> Pair(MaterialTheme.colorScheme.errorContainer, MaterialTheme.colorScheme.onErrorContainer)
+        "cancelled" -> Pair(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.colorScheme.onSurfaceVariant)
+        else -> Pair(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = backgroundColor,
+        modifier = Modifier.padding(horizontal = 4.dp)
+    ) {
+        Text(
+            text = status.uppercase(),
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Medium,
+            color = contentColor,
+            fontSize = 11.sp
+        )
+    }
+}
+
+private fun formatDate(timestamp: String): String {
     return try {
-        val inputFormat = SimpleDateFormat(
-            "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'",
-            Locale.getDefault()
-        ) // Adjust format as needed
-        val outputFormat = SimpleDateFormat("dd/MM/yy", Locale.getDefault())
-        val date = inputFormat.parse(dateString) ?: return dateString
+        val inputFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault())
+        inputFormat.timeZone = TimeZone.getTimeZone("UTC")
+        val date = inputFormat.parse(timestamp)
+        
+        val outputFormat = SimpleDateFormat("MMM dd, HH:mm", Locale.getDefault())
         outputFormat.format(date)
     } catch (e: Exception) {
+        // Fallback for different format or error
         try {
-            // Fallback for simpler format
-            val inputFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-            val outputFormat = SimpleDateFormat("dd/MM/yy", Locale.getDefault())
-            val date = inputFormat.parse(dateString) ?: return dateString
-            outputFormat.format(date)
+             // Try another common format just in case, or just return original
+             timestamp
         } catch (e2: Exception) {
-            dateString
+            timestamp
         }
     }
 }

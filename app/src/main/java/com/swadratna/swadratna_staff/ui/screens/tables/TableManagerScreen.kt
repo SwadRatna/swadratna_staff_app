@@ -47,6 +47,8 @@ import java.io.OutputStream
 import org.json.JSONObject
 import com.swadratna.swadratna_staff.R
 
+import com.swadratna.swadratna_staff.ui.components.SwipeRefreshContainer
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TableManagerScreen(
@@ -55,6 +57,7 @@ fun TableManagerScreen(
 ) {
     val tableListState by viewModel.tableListState.collectAsState()
     val staffLocationId by viewModel.staffLocationId.collectAsState()
+    val isRefreshing by viewModel.isRefreshing.collectAsState()
     var selectedTable by remember { mutableStateOf<Table?>(null) }
     var showQrDialog by remember { mutableStateOf(false) }
 
@@ -76,34 +79,41 @@ fun TableManagerScreen(
             )
         }
     ) { paddingValues ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .padding(16.dp)
+        SwipeRefreshContainer(
+            isRefreshing = isRefreshing,
+            onRefresh = { staffLocationId?.let { viewModel.getTables(it) } }
         ) {
-            when (tableListState) {
-                is TableListState.Loading -> {
-                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-                }
-                is TableListState.Error -> {
-                    Text(
-                        text = (tableListState as TableListState.Error).message,
-                        color = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.align(Alignment.Center)
-                    )
-                }
-                is TableListState.Success -> {
-                    val tables = (tableListState as TableListState.Success).tables.tables
-                    LazyVerticalGrid(
-                        columns = GridCells.Fixed(3),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        items(tables) { table ->
-                            TableManagerItem(table = table) {
-                                selectedTable = table
-                                showQrDialog = true
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .padding(16.dp)
+            ) {
+                when (tableListState) {
+                    is TableListState.Loading -> {
+                        if (!isRefreshing) {
+                            CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                        }
+                    }
+                    is TableListState.Error -> {
+                        Text(
+                            text = (tableListState as TableListState.Error).message,
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.align(Alignment.Center)
+                        )
+                    }
+                    is TableListState.Success -> {
+                        val tables = (tableListState as TableListState.Success).tables.tables
+                        LazyVerticalGrid(
+                            columns = GridCells.Fixed(3),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            items(tables) { table ->
+                                TableManagerItem(table = table) {
+                                    selectedTable = table
+                                    showQrDialog = true
+                                }
                             }
                         }
                     }

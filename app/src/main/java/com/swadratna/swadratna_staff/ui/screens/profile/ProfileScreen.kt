@@ -204,18 +204,16 @@ fun StaffProfileScreen(
                 defaultPrinterName = name ?: "None Selected"
             }
 
-            if(permissions.contains(Permissions.REPORTS_VIEW)) {
-                ProfileSection(title = "Management") {
-                    ProfileMenuItem(
-                        icon = ImageVector.vectorResource(R.drawable.ic_recipt),
-                        title = "Sales Report",
-                        subtitle = "View daily sales and transactions",
-                        onClick = { navController.navigate(NavigationRoute.SalesReport.route) }
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
+            ProfileSection(title = "Management") {
+                ProfileMenuItem(
+                    icon = ImageVector.vectorResource(R.drawable.ic_inventory),
+                    title = "Inventory",
+                    subtitle = "Manage inventory items",
+                    onClick = { navController.navigate(NavigationRoute.Inventory.route) }
+                )
             }
+
+            Spacer(modifier = Modifier.height(16.dp))
 
             ProfileSection(title = "Table Management") {
                 ProfileMenuItem(

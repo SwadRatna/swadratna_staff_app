@@ -82,6 +82,9 @@ class OrdersDashboardViewModel @Inject constructor(
     private val _loading = MutableStateFlow(false)
     val loading: StateFlow<Boolean> = _loading
 
+    private val _isRefreshing = MutableStateFlow(false)
+    val isRefreshing: StateFlow<Boolean> = _isRefreshing
+
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error
     
@@ -155,6 +158,42 @@ class OrdersDashboardViewModel @Inject constructor(
      * Refreshes the orders list
      */
     fun refreshOrders() {
-        fetchOrders(page = 1, limit = 50)
+        fetchJob?.cancel()
+        fetchJob = viewModelScope.launch {
+            _isRefreshing.value = true
+            // Don't clear error here if we want to show snackbar, but maybe we should?
+            // _error.value = null 
+            
+            try {
+                // Collect the first value from staffLocationId flow
+                val locationId = staffLocationId.first()
+                
+                if (locationId == null) {
+                    // Only show error if we have no data? Or maybe just toast/snackbar handled by UI observing error?
+                    // _error.value = "Location ID not available"
+                    _isRefreshing.value = false
+                    return@launch
+                }
+                
+                // Make the API call with the location ID - using same limit as initial fetch or larger?
+                // The previous implementation used 50.
+                val result = orderManagementRepository.getAllOrders(locationId, 1, 50)
+                
+                result.onSuccess { response ->
+                    val newOrders = response.orders
+                    if (_allOrders.value != newOrders) {
+                        _allOrders.value = newOrders
+                        _paginationInfo.value = response.pagination
+                    }
+                }.onFailure { throwable ->
+                    // For refresh, we might not want to show full screen error, but update the error state
+                     _error.value = throwable.message ?: "Unknown error occurred"
+                }
+            } catch (e: Exception) {
+                _error.value = "Failed to refresh: ${e.message}"
+            } finally {
+                _isRefreshing.value = false
+            }
+        }
     }
 }

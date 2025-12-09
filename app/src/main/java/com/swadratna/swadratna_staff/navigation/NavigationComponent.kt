@@ -61,18 +61,33 @@ import com.swadratna.swadratna_staff.ui.components.LocalNotificationManager
 
 import androidx.compose.foundation.layout.statusBarsPadding
 
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.swadratna.swadratna_staff.data.remote.model.StaffRole
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NavigationComponent(
     navController: NavHostController = rememberNavController(),
-    startDestination: String
+    startDestination: String,
+    viewModel: NavigationViewModel = hiltViewModel()
 ) {
-    val items = listOf(
-        NavigationRoute.Orders,
-        NavigationRoute.KotList,
-        NavigationRoute.Tables,
-        NavigationRoute.Inventory
-    )
+    val staffRole by viewModel.staffRole.collectAsState()
+    
+    val items = remember(staffRole) {
+        if (staffRole == StaffRole.MANAGER.roleName) {
+            listOf(
+                NavigationRoute.Orders,
+                NavigationRoute.Tables,
+                NavigationRoute.SalesReport
+            )
+        } else {
+            listOf(
+                NavigationRoute.Orders,
+                NavigationRoute.Tables,
+                NavigationRoute.KotList
+            )
+        }
+    }
 
     // Get the current back stack entry
     val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -212,7 +227,7 @@ fun NavigationComponent(
                 TablesScreen(navController)
             }
             composable(route = NavigationRoute.Inventory.route) {
-                InventoryScreen()
+                InventoryScreen(navController = navController)
             }
             composable(route = NavigationRoute.Orders.route) {
                 OrderDashboard(
