@@ -1,73 +1,52 @@
 package com.swadratna.swadratna_staff.ui.screens.orders
 
+import android.widget.Toast
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.consumeWindowInsets
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Call
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Divider
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.RadioButton
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.surfaceColorAtElevation
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import com.swadratna.swadratna_staff.R
 import com.swadratna.swadratna_staff.data.remote.model.KotX
 import com.swadratna.swadratna_staff.data.remote.model.OrderDetailsX
 import com.swadratna.swadratna_staff.data.remote.model.OrderXX
 import com.swadratna.swadratna_staff.navigation.NavigationRoute
+import com.swadratna.swadratna_staff.ui.components.NetworkTopSnackbarHost
 import com.swadratna.swadratna_staff.ui.screens.kot.KotStatusUpdateState
 import com.swadratna.swadratna_staff.ui.screens.kot.KotViewModel
 import com.swadratna.swadratna_staff.utils.BillPrinterUtil
 import com.swadratna.swadratna_staff.utils.rememberBluetoothPermissionLauncher
+import java.text.NumberFormat
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import android.widget.Toast
-import androidx.compose.foundation.clickable
-import androidx.compose.ui.res.painterResource
-import com.swadratna.swadratna_staff.R
-import com.swadratna.swadratna_staff.ui.components.NetworkTopSnackbarHost
-
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -101,22 +80,18 @@ fun OrdersScreen(
         }
     }
 
-    val userHaveOrders = remember(orderDetailsXState) {
-        if (orderDetailsXState is OrderDetailsXState.Success) {
-            val orderDetails = (orderDetailsXState as OrderDetailsXState.Success).order
-            orderDetails.kots?.isNotEmpty() == true
-        } else {
-            false
-        }
-    }
+    val orderDetails = (orderDetailsXState as? OrderDetailsXState.Success)?.order
 
     Scaffold(
         modifier = modifier,
         bottomBar = {
-            if (userHaveOrders) {
+            if (orderDetails != null) {
+                val isCompleted = orderDetails.order.order_status.equals("completed", ignoreCase = true)
+                val haveNoOrderYet = (orderDetails.kots == null || orderDetails.kots.isEmpty() )
+                val showBillGenBtn =  if(haveNoOrderYet) false else if(isCompleted) false else true
                 Row(
                     modifier = Modifier
-                        .background(MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp))
+                        .background(MaterialTheme.colorScheme.surface)
                         .padding(16.dp),
                     horizontalArrangement = Arrangement.Center
                 ) {
@@ -128,11 +103,22 @@ fun OrdersScreen(
                                 )
                             )
                         },
+                        enabled =  showBillGenBtn,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (isCompleted) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary
+                        ),
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(50.dp)
+                            .clip(RoundedCornerShape(12.dp))
                     ) {
-                        Text("GENERATE BILL", fontWeight = FontWeight.SemiBold)
+                        Icon(painterResource(R.drawable.ic_recipt), contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = if (isCompleted) "BILL GENERATED" else "GENERATE BILL",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp
+                        )
                     }
                 }
             }
@@ -156,16 +142,15 @@ fun OrdersScreen(
             }
 
             is OrderDetailsXState.Success -> {
-                val orderDetails = (orderDetailsXState as OrderDetailsXState.Success).order
+                val order = (orderDetailsXState as OrderDetailsXState.Success).order
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(paddingValues)
                 ) {
                     SuccessLayout(
-                        userHaveOrders,
-                        orderDetails,
-                        Modifier.fillMaxSize(),
+                        orderDetails = order,
+                        modifier = Modifier.fillMaxSize(),
                         onUpdateKotStatus = { kotId, status ->
                             kotViewModel.updateKotStatus(kotId, status)
                         }
@@ -223,103 +208,280 @@ fun OrdersScreen(
 
 @Composable
 fun SuccessLayout(
-    userHaveOrders: Boolean,
     orderDetails: OrderDetailsX,
     modifier: Modifier,
     onUpdateKotStatus: (Int, String) -> Unit
 ) {
-    if (userHaveOrders) {
-        LazyColumn(
-            modifier = modifier,
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            // 1. ORDER SUMMARY CARD
-            item {
-                OrderSummaryCard(orderDetails.order)
-            }
+    LazyColumn(
+        modifier = modifier.padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+        contentPadding = PaddingValues(top = 16.dp, bottom = 100.dp)
+    ) {
+        // 1. Customer & Table Info Card
+        item {
+            CustomerTableCard(orderDetails)
+        }
 
-            // 2. KOT LIST HEADING
-            item {
-                Text(
-                    text = "Kitchen Orders (KOTs)",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(top = 8.dp)
-                )
-            }
+        // 2. Order Summary (ID, Time, Status)
+//        item {
+//            OrderSummaryCard(orderDetails.order)
+//        }
 
-            items(orderDetails.kots.orEmpty()) { kot ->
+        // 3. KOT List
+        item {
+            Text(
+                text = "Kitchen Orders (KOTs)",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
+            )
+        }
+
+        if (orderDetails.kots.isNullOrEmpty()) {
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                ) {
+                    Box(modifier = Modifier.padding(24.dp).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                        Text("No KOTs placed yet", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            }
+        } else {
+            items(orderDetails.kots) { kot ->
                 KotCard(
                     kot = kot,
-                    tableLabel = orderDetails.table?.table_id,
-                    customerName = orderDetails.user?.name,
+                    tableLabel = orderDetails.table.table_id,
+                    customerName = orderDetails.user.name,
                     onUpdateStatus = onUpdateKotStatus
                 )
             }
-
-        }
-
-    } else {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp) ,
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = "You haven't ordered yet. Please order to see your Orders.",
-                textAlign = TextAlign.Center,
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onBackground
-            )
         }
     }
 }
-
-// ---------------------------------------------------------------------------------------------
 
 @Composable
-fun OrderSummaryCard(order: OrderXX) {
+fun CustomerTableCard(orderDetails: OrderDetailsX) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(MaterialTheme.colorScheme.surface)
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(0.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            // Order ID
-            Text(
-                text = "Order ID: ${order.id}",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Status Badge
             Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .clip(MaterialTheme.shapes.extraSmall)
-                    .background(getStatusColor(order.order_status).copy(alpha = 0.2f))
-                    .padding(horizontal = 8.dp, vertical = 4.dp)
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
+                Column {
+                    Text(
+                        text = "TABLE",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = orderDetails.table.table_id,
+                        style = MaterialTheme.typography.displaySmall,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                // Check if the user object exists first.
+                orderDetails.user?.let { user ->
+                    // The entire block below will only execute if orderDetails.user is NOT null.
+                    Column(horizontalAlignment = Alignment.End) {
+
+                        // 1. User Name Row - Check if the name exists before rendering the row
+                        user.name?.let { name ->
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    Icons.Default.Person,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = name,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            }
+                        }
+
+                        // 2. User Email Row - Check if the email exists and is not empty
+                        if (user.email?.isNotEmpty() == true) {
+                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 2.dp)) {
+                                Icon(
+                                    Icons.Default.Email,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f),
+                                    modifier = Modifier.size(14.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = user.email,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            Divider(color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.2f))
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
-                    Icons.Default.Info,
-                    contentDescription = "Status",
-                    tint = getStatusColor(order.order_status),
+                    Icons.Default.LocationOn,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f),
                     modifier = Modifier.size(16.dp)
                 )
-                Spacer(modifier = Modifier.width(4.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                val address = orderDetails.location.address
+                val fullAddress = listOfNotNull(
+                    address.street_1, 
+                    address.locality, 
+                    address.city
+                ).filter { it.isNotEmpty() }.joinToString(", ")
+                
                 Text(
-                    text = order.order_status.uppercase(),
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = getStatusColor(order.order_status)
+                    text = fullAddress.ifEmpty { "Location not available" },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f),
+                    maxLines = 1
                 )
             }
-            // Add other relevant summary details here (e.g., table number, time)
         }
     }
 }
+
+//@Composable
+//fun OrderSummaryCard(order: OrderXX) {
+//    Card(
+//        modifier = Modifier.fillMaxWidth(),
+//        shape = RoundedCornerShape(16.dp),
+//        colors = CardDefaults.cardColors(MaterialTheme.colorScheme.surface),
+//        elevation = CardDefaults.cardElevation(2.dp)
+//    ) {
+//        Column(modifier = Modifier.padding(16.dp)) {
+//            // Header: ID and Status
+//            Row(
+//                modifier = Modifier.fillMaxWidth(),
+//                horizontalArrangement = Arrangement.SpaceBetween,
+//                verticalAlignment = Alignment.CenterVertically
+//            ) {
+//                Column {
+//                    Text(
+//                        text = "Order #${order.id}",
+//                        style = MaterialTheme.typography.titleLarge,
+//                        fontWeight = FontWeight.Bold,
+//                        color = MaterialTheme.colorScheme.onSurface
+//                    )
+//                    Spacer(modifier = Modifier.height(4.dp))
+//                    Row(verticalAlignment = Alignment.CenterVertically) {
+//                        Icon(
+//                            Icons.Default.DateRange,
+//                            contentDescription = null,
+//                            modifier = Modifier.size(14.dp),
+//                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+//                        )
+//                        Spacer(modifier = Modifier.width(4.dp))
+//                        Text(
+//                            text = formatDate(order.order_date),
+//                            style = MaterialTheme.typography.bodySmall,
+//                            color = MaterialTheme.colorScheme.onSurfaceVariant
+//                        )
+//                    }
+//                }
+//
+//                Surface(
+//                    shape = RoundedCornerShape(50),
+//                    color = getStatusColor(order.order_status).copy(alpha = 0.1f)
+//                ) {
+//                    Row(
+//                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+//                        verticalAlignment = Alignment.CenterVertically
+//                    ) {
+//                        Box(
+//                            modifier = Modifier
+//                                .size(8.dp)
+//                                .background(getStatusColor(order.order_status), CircleShape)
+//                        )
+//                        Spacer(modifier = Modifier.width(8.dp))
+//                        Text(
+//                            text = order.order_status.uppercase(),
+//                            style = MaterialTheme.typography.labelMedium,
+//                            fontWeight = FontWeight.Bold,
+//                            color = getStatusColor(order.order_status)
+//                        )
+//                    }
+//                }
+//            }
+//
+//            Spacer(modifier = Modifier.height(16.dp))
+//            Divider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+//            Spacer(modifier = Modifier.height(16.dp))
+//
+//            // Financials
+//            Row(
+//                modifier = Modifier.fillMaxWidth(),
+//                horizontalArrangement = Arrangement.SpaceBetween
+//            ) {
+//                Column {
+//                    Text(
+//                        text = "Subtotal",
+//                        style = MaterialTheme.typography.bodySmall,
+//                        color = MaterialTheme.colorScheme.onSurfaceVariant
+//                    )
+//                    Text(
+//                        text = "₹${order.order_value}",
+//                        style = MaterialTheme.typography.bodyLarge,
+//                        fontWeight = FontWeight.SemiBold
+//                    )
+//                }
+//                if (order.discount > 0) {
+//                    Column(horizontalAlignment = Alignment.End) {
+//                        Text(
+//                            text = "Discount",
+//                            style = MaterialTheme.typography.bodySmall,
+//                            color = MaterialTheme.colorScheme.error
+//                        )
+//                        Text(
+//                            text = "-₹${order.discount}",
+//                            style = MaterialTheme.typography.bodyLarge,
+//                            fontWeight = FontWeight.SemiBold,
+//                            color = MaterialTheme.colorScheme.error
+//                        )
+//                    }
+//                }
+//                Column(horizontalAlignment = Alignment.End) {
+//                    Text(
+//                        text = "Total",
+//                        style = MaterialTheme.typography.bodySmall,
+//                        color = MaterialTheme.colorScheme.onSurfaceVariant
+//                    )
+//                    Text(
+//                        text = "₹${order.total_value}",
+//                        style = MaterialTheme.typography.titleMedium,
+//                        fontWeight = FontWeight.Bold,
+//                        color = MaterialTheme.colorScheme.primary
+//                    )
+//                }
+//            }
+//        }
+//    }
+//}
 
 @Composable
 fun KotCard(
@@ -379,82 +541,179 @@ fun KotCard(
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        elevation = CardDefaults.cardElevation(2.dp),
+        shape = RoundedCornerShape(12.dp)
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            // KOT Header
+        Column {
+            // Header
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+                    .padding(12.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column {
-                    Text(
-                        text = "KOT #${kot.kot_number}",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.clickable { showStatusDialog = true }
-                    ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            text = kot.status.uppercase(),
-                            style = MaterialTheme.typography.labelLarge,
-                            color = getStatusColor(kot.status)
+                            text = "KOT #${kot.kot_number}",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Surface(
+                            shape = RoundedCornerShape(4.dp),
+                            color = getStatusColor(kot.status).copy(alpha = 0.1f),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, getStatusColor(kot.status).copy(alpha = 0.5f)),
+                            modifier = Modifier.clickable { showStatusDialog = true }
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = kot.status.uppercase(),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = getStatusColor(kot.status)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Icon(
+                                    Icons.Default.Edit,
+                                    contentDescription = "Edit",
+                                    modifier = Modifier.size(10.dp),
+                                    tint = getStatusColor(kot.status)
+                                )
+                            }
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            Icons.Default.Person,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(12.dp)
                         )
                         Spacer(modifier = Modifier.width(4.dp))
-                        Icon(
-                            imageVector = Icons.Default.Edit,
-                            contentDescription = "Edit Status",
-                            modifier = Modifier.size(16.dp),
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                }
-
-                IconButton(onClick = {
-                    performPrint()
-                }) {
-                    Icon(painter = painterResource(R.drawable.ic_recipt), contentDescription = "Print KOT")
-                }
-            }
-            Spacer(modifier = Modifier.height(8.dp))
-            Divider()
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // KOT Items List (null-safe)
-            kot.items.orEmpty().forEach { kotItem ->
-
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(4.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth(0.8f)
-                            .padding(vertical = 4.dp),
-                        verticalArrangement = Arrangement.SpaceBetween
-                    ) {
                         Text(
-                            text = "${kotItem.menu_item.name}",
-                            style = MaterialTheme.typography.bodyLarge
-                        )
-                        Text(
-                            text = "${kotItem.menu_item.description}",
-                            style = MaterialTheme.typography.bodyMedium,
+                            text = formatDate(kot.created_at),
+                            style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                    Text(
-                        text = "Qty: ${kotItem.quantity}",
-                        style = MaterialTheme.typography.labelMedium,
+                }
+                
+                IconButton(
+                    onClick = { performPrint() },
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_recipt), 
+                        contentDescription = "Print",
+                        modifier = Modifier.size(20.dp),
+                        tint = MaterialTheme.colorScheme.primary
                     )
                 }
             }
+            
+            Divider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+            
+            // Items
+            Column(modifier = Modifier.padding(16.dp)) {
+                kot.items.orEmpty().forEachIndexed { index, kotItem ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.Top
+                    ) {
+                        // Veg/Non-Veg Indicator
+                        VegNonVegIcon(
+                            isVegetarian = kotItem.menu_item?.isVegetarian == true,
+                            modifier = Modifier.padding(top = 4.dp)
+                        )
+                        
+                        Spacer(modifier = Modifier.width(12.dp))
+                        
+                        // Details
+                        Column(modifier = Modifier.weight(1f)) {
+                            val itemName = kotItem.menu_item?.name ?: "Unknown Item"
+                            Text(
+                                text = itemName,
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            if (!kotItem.menu_item?.description.isNullOrEmpty()) {
+                                Text(
+                                    text = kotItem.menu_item?.description ?: "",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 2,
+                                    lineHeight = 14.sp
+                                )
+                            }
+                            // Instructions
+                            if (!kotItem.instructions.isNullOrEmpty()) {
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "Note: ${kotItem.instructions}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.error.copy(alpha = 0.8f),
+                                    fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                                )
+                            }
+                        }
+                        
+                        Spacer(modifier = Modifier.width(16.dp))
+                        
+                        // Price & Qty
+                        Column(horizontalAlignment = Alignment.End) {
+                            Text(
+                                text = "x${kotItem.quantity ?: 0}",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Text(
+                                text = "₹${(kotItem.total_price ?: 0.0).toInt()}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+                    
+                    if (index < kot.items.size - 1) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Divider(
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
+                            thickness = 0.5.dp,
+                            modifier = Modifier.padding(start = 28.dp)
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                    }
+                }
+            }
         }
+    }
+}
+
+@Composable
+fun VegNonVegIcon(isVegetarian: Boolean, modifier: Modifier = Modifier) {
+    val color = if (isVegetarian) Color(0xFF4CAF50) else Color(0xFFE91E63)
+    Box(
+        modifier = modifier
+            .size(16.dp)
+            .border(1.dp, color, RoundedCornerShape(4.dp))
+            .padding(3.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Box(
+            modifier = Modifier
+                .size(8.dp)
+                .background(color, CircleShape)
+        )
     }
 }
 
@@ -477,17 +736,17 @@ fun StatusUpdateDialog(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable { selectedStatus = status }
-                            .padding(vertical = 8.dp),
+                            .padding(vertical = 12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         RadioButton(
                             selected = (status == selectedStatus),
                             onClick = { selectedStatus = status }
                         )
+                        Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = status.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() },
-                            style = MaterialTheme.typography.bodyLarge,
-                            modifier = Modifier.padding(start = 8.dp)
+                            style = MaterialTheme.typography.bodyLarge
                         )
                     }
                 }
@@ -508,8 +767,6 @@ fun StatusUpdateDialog(
     )
 }
 
-// ---------------------------------------------------------------------------------------------
-
 @Composable
 fun getStatusColor(status: String): Color {
     return when (status.lowercase()) {
@@ -518,5 +775,23 @@ fun getStatusColor(status: String): Color {
         "served" -> Color(0xFF2196F3) // Blue
         "cancelled" -> MaterialTheme.colorScheme.error // Red
         else -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
+}
+
+private fun formatDate(dateString: String): String {
+    return try {
+        val inputFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault())
+        val date = inputFormat.parse(dateString)
+        val outputFormat = SimpleDateFormat("dd MMM, hh:mm a", Locale.getDefault())
+        outputFormat.format(date ?: Date())
+    } catch (e: Exception) {
+        try {
+            val inputFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.getDefault())
+            val date = inputFormat.parse(dateString)
+            val outputFormat = SimpleDateFormat("dd MMM, hh:mm a", Locale.getDefault())
+            outputFormat.format(date ?: Date())
+        } catch (e2: Exception) {
+            dateString
+        }
     }
 }

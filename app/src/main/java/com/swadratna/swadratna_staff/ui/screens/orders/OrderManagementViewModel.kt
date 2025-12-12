@@ -352,6 +352,23 @@ class OrderManagementViewModel @Inject constructor(
         }
     }
 
+    fun getBillDetailsById(billId: String) {
+        viewModelScope.launch {
+            if (_billDetailsState.value !is BillDetailsState.Success) {
+                _billDetailsState.value = BillDetailsState.Loading
+            }
+            repository.getBillDetailsById(billId)
+                .onSuccess {
+                    _billDetailsState.value = BillDetailsState.Success(it)
+                }
+                .onFailure {
+                    if (_billDetailsState.value !is BillDetailsState.Success) {
+                        _billDetailsState.value = BillDetailsState.Error(it.message ?: "Unknown error fetching bill details")
+                    }
+                }
+        }
+    }
+
     fun fetchStaffRole() {
         viewModelScope.launch {
             staffUserDao.getLoggedInStaffUser().collect { staffUser ->

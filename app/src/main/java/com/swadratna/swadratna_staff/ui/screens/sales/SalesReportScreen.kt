@@ -352,7 +352,13 @@ fun SalesReportScreen(
                             contentPadding = PaddingValues(bottom = 16.dp)
                         ) {
                             items(it) { sale ->
-                                SaleItemCard(sale)
+                                SaleItemCard(sale) {
+                                    navController.navigate(
+                                        com.swadratna.swadratna_staff.navigation.NavigationRoute.Bill.createRoute(
+                                            billId = sale.id.toString()
+                                        )
+                                    )
+                                }
                             }
                         }
                     }
@@ -371,12 +377,13 @@ fun SalesReportScreen(
 }
 
 @Composable
-fun SaleItemCard(sale: SaleTransaction) {
+fun SaleItemCard(sale: SaleTransaction, onClick: () -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 4.dp),
-        shape = RoundedCornerShape(12.dp),
+            .padding(horizontal = 8.dp, vertical = 4.dp)
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column(

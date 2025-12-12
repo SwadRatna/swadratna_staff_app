@@ -201,6 +201,24 @@ class OrderManagementRepository @Inject constructor(
         }
     }
 
+    suspend fun getBillDetailsById(billId: String): Result<BillDetail> {
+        if (!networkMonitor.isOnline.value) {
+            return Result.failure(Exception("No network connection"))
+        }
+        return try {
+            val response = apiService.getBillDetailsById(billId)
+            if (response.isSuccessful) {
+                response.body()?.let {
+                    Result.success(it)
+                } ?: Result.failure(Exception("Bill details not found"))
+            } else {
+                Result.failure(Exception("Failed to fetch bill details: ${response.message()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     suspend fun getAllOrders(locationId: Int, page: Int, limit: Int): Result<AllOrdersResponse> {
         if (!networkMonitor.isOnline.value) {
             return Result.failure(Exception("No network connection"))

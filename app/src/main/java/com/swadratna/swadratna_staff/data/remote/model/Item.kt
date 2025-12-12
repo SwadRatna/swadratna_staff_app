@@ -1,5 +1,7 @@
 package com.swadratna.swadratna_staff.data.remote.model
 
+import com.google.gson.annotations.SerializedName
+
 data class Item(
     val id: Int,
     val instructions: String,

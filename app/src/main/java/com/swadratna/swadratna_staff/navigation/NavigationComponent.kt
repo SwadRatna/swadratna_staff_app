@@ -125,7 +125,7 @@ fun NavigationComponent(
                     MainActivity.clearDeepLinkData(context)
                 } else if (type == "payment_completed") {
                     // Navigate to bill screen
-                    val route = "${NavigationRoute.Bill.route}/$orderId"
+                    val route = "${NavigationRoute.Bill.route}?orderId=$orderId"
                     Log.d("NavigationComponent", "Navigating to bill screen: $route")
                     
                     navController.navigate(route) {
@@ -282,10 +282,15 @@ fun NavigationComponent(
                 )
             }
             composable(
-                route = "${NavigationRoute.Bill.route}/{orderId}",
-                arguments = listOf(navArgument("orderId") { type = NavType.StringType })) { backStackEntry ->
+                route = "${NavigationRoute.Bill.route}?orderId={orderId}&billId={billId}",
+                arguments = listOf(
+                    navArgument("orderId") { type = NavType.StringType; nullable = true },
+                    navArgument("billId") { type = NavType.StringType; nullable = true }
+                )
+            ) { backStackEntry ->
                 val orderId = backStackEntry.arguments?.getString("orderId")
-                PayBillScreen(navController = navController, orderId = orderId)
+                val billId = backStackEntry.arguments?.getString("billId")
+                PayBillScreen(navController = navController, orderId = orderId, billId = billId)
             }
             composable(route = NavigationRoute.KotList.route) {
                 KotListScreen(navController = navController)
@@ -410,7 +415,13 @@ sealed class NavigationRoute(val route: String, val title: String, val icon: Int
 //    object OrderMenuScreen : NavigationRoute("order_taking", "Order Taking", Icons.Default.List)
 
     object Bill : NavigationRoute("bill", "Bill", R.drawable.ic_recipt) {
-        fun createRoute(orderId: String) = "bill/$orderId"
+        fun createRoute(orderId: String? = null, billId: String? = null): String {
+            return if (orderId != null) {
+                "bill?orderId=$orderId"
+            } else {
+                "bill?billId=$billId"
+            }
+        }
     }
     object KotList : NavigationRoute("kot_list", "KOTs", R.drawable.ic_kot)
     object SalesReport : NavigationRoute("sales_report", "Sales", R.drawable.ic_recipt)

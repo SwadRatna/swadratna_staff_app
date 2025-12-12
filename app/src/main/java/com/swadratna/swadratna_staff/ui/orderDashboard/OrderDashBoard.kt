@@ -310,7 +310,7 @@ fun ErrorState(error: String?, onRetry: () -> Unit) {
 @Composable
 fun OrderCard(order: OrderListItem, navController: NavController) {
     Card(
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         modifier = Modifier
             .fillMaxWidth()

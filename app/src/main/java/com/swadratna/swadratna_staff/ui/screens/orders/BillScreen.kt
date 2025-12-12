@@ -81,7 +81,8 @@ fun InfoColumn(label: String, value: String) {
 @Composable
 fun PayBillScreen(
     navController: NavController,
-    orderId: String?,
+    orderId: String? = null,
+    billId: String? = null,
     viewModel: OrderManagementViewModel = hiltViewModel()
 ) {
     val billDetailsState by viewModel.billDetailsState.collectAsStateWithLifecycle()
@@ -104,6 +105,7 @@ fun PayBillScreen(
     var postPaymentAmount by remember { mutableStateOf(0.0) }
 
     val billDetail = (billDetailsState as? BillDetailsState.Success)?.billDetail
+    val activeOrderId = orderId ?: billDetail?.bill?.orderId?.toString()
 
     // Handle Payment Success
     LaunchedEffect(Unit) {
@@ -209,10 +211,19 @@ fun PayBillScreen(
         }
     }
 
-    LaunchedEffect(orderId) {
-        orderId?.let {
-            viewModel.getBillDetails(it)
-            viewModel.findBill(it)
+    LaunchedEffect(orderId, billId) {
+        if (orderId != null) {
+            viewModel.getBillDetails(orderId)
+            viewModel.findBill(orderId)
+        } else if (billId != null) {
+            viewModel.getBillDetailsById(billId)
+        }
+    }
+
+    LaunchedEffect(billDetailsState) {
+        if (orderId == null && billDetailsState is BillDetailsState.Success) {
+            val bill = (billDetailsState as BillDetailsState.Success).billDetail.bill
+            viewModel.findBill(bill.orderId.toString())
         }
     }
 
@@ -269,7 +280,7 @@ fun PayBillScreen(
                             ) {
                                 if (isPending || isHold) {
                                     Button(
-                                        onClick = { viewModel.approveBill("HOLD", "", billDetail.bill.id, orderId) },
+                                        onClick = { viewModel.approveBill("HOLD", "", billDetail.bill.id, activeOrderId) },
                                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary),
                                         modifier = Modifier.weight(1f),
                                         enabled = !loading
@@ -277,7 +288,7 @@ fun PayBillScreen(
                                         Text("Hold")
                                     }
                                     Button(
-                                        onClick = { viewModel.approveBill("REJECT", "", billDetail.bill.id, orderId) },
+                                        onClick = { viewModel.approveBill("REJECT", "", billDetail.bill.id, activeOrderId) },
                                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
                                         modifier = Modifier.weight(1f),
                                         enabled = !loading
@@ -285,7 +296,7 @@ fun PayBillScreen(
                                         Text("Reject")
                                     }
                                     Button(
-                                        onClick = { viewModel.approveBill("ACCEPT", "", billDetail.bill.id, orderId) },
+                                        onClick = { viewModel.approveBill("ACCEPT", "", billDetail.bill.id, activeOrderId) },
                                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                                         modifier = Modifier.weight(1f),
                                         enabled = !loading
@@ -564,7 +575,10 @@ fun PayBillScreen(
             }
             NetworkTopSnackbarHost(
                 isOnline = isOnline,
-                onRefresh = { orderId?.let { viewModel.getBillDetails(it) } },
+                onRefresh = { 
+                    if (orderId != null) viewModel.getBillDetails(orderId)
+                    else if (billId != null) viewModel.getBillDetailsById(billId)
+                },
                 modifier = Modifier.align(Alignment.TopCenter).padding(8.dp)
             )
         }
@@ -629,7 +643,7 @@ fun PayBillScreen(
                             notes = if (paymentNotes.isBlank()) null else paymentNotes,
                             amount_paid = amount
                         )
-                        viewModel.recordBillPayment(current.bill.id, request, orderId)
+                        viewModel.recordBillPayment(current.bill.id, request, activeOrderId)
                         showPaymentDialog = false
                     } else {
                         Toast.makeText(context, "Enter a valid amount", Toast.LENGTH_SHORT).show()

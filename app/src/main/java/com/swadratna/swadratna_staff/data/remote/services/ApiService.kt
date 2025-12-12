@@ -86,6 +86,9 @@ interface ApiService {
     @GET("/api/v1/staff/bill")
     suspend fun getBillDetails(@Header("X-Key") xKey: String, @Query("orderId") orderId: String): Response<BillDetail>
 
+    @GET("/api/v1/staff/bill/{billId}")
+    suspend fun getBillDetailsById(@Path("billId") billId: String): Response<BillDetail>
+
     @GET("/api/v1/staff/orders/{locationId}")
     suspend fun getAllOrders(
         @Path("locationId") locationId: Int,
