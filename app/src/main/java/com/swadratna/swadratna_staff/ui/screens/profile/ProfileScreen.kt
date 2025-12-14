@@ -51,9 +51,10 @@ fun StaffProfileScreen(
 
     LaunchedEffect(isLoggedOut) {
         if(isLoggedOut) {
-            navController.navigate(
-                NavigationRoute.Login.route
-            )
+            navController.navigate(NavigationRoute.Login.route) {
+                popUpTo(0) { inclusive = true }
+                launchSingleTop = true
+            }
         }
     }
 

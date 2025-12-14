@@ -168,6 +168,7 @@ class MainActivity : ComponentActivity() {
         intent?.let {
             val notificationType = it.getStringExtra("notification_type")
             val orderId = it.getIntExtra("order_id", -1)
+            val billId = it.getStringExtra("bill_id")
             val tableNumber = it.getIntExtra("table_number", -1)
             val inAppNotification = it.getBooleanExtra("in_app_notification", false)
             val notificationTitle = it.getStringExtra("notification_title")
@@ -175,16 +176,16 @@ class MainActivity : ComponentActivity() {
             val deepLink = it.getStringExtra("deeplink")
             
             if (notificationType != null) {
-                Log.d("MainActivity", "Notification received - Type: $notificationType, OrderId: $orderId, TableNumber: $tableNumber, InApp: $inAppNotification, DeepLink: $deepLink")
+                Log.d("MainActivity", "Notification received - Type: $notificationType, OrderId: $orderId, BillId: $billId, TableNumber: $tableNumber, InApp: $inAppNotification, DeepLink: $deepLink")
                 
                 // If this is specifically an in-app notification from Firebase service
                 if (inAppNotification) {
-                    showInAppNotificationWithTitle(notificationType, orderId, tableNumber, notificationTitle, notificationBody, deepLink)
+                    showInAppNotificationWithTitle(notificationType, orderId, billId, tableNumber, notificationTitle, notificationBody, deepLink)
                 } else {
                     // Check if app is in foreground (already open)
                     if (isAppInForeground()) {
                         // Show in-app notification instead of deep link navigation
-                        showInAppNotification(notificationType, orderId, tableNumber, deepLink)
+                        showInAppNotification(notificationType, orderId, billId, tableNumber, deepLink)
                     } else {
                         // App is in background, use deep link navigation
                         handleDeepLinkNavigation(notificationType, orderId, tableNumber)
@@ -198,7 +199,7 @@ class MainActivity : ComponentActivity() {
         return this.isAppInForeground
     }
     
-    private fun showInAppNotification(type: String, orderId: Int, tableNumber: Int, deepLink: String? = null) {
+    private fun showInAppNotification(type: String, orderId: Int, billId: String?, tableNumber: Int, deepLink: String? = null) {
         val notification = com.swadratna.swadratna_staff.ui.components.InAppNotification(
             id = System.currentTimeMillis().toString(),
             title = when (type) {
@@ -215,6 +216,7 @@ class MainActivity : ComponentActivity() {
             },
             type = type,
             orderId = if (orderId != -1) orderId else null,
+            billId = billId,
             tableNumber = if (tableNumber != -1) tableNumber else null,
             deepLink = deepLink
         )
@@ -223,7 +225,7 @@ class MainActivity : ComponentActivity() {
         Log.d("MainActivity", "In-app notification shown: ${notification.title}")
     }
     
-    private fun showInAppNotificationWithTitle(type: String, orderId: Int, tableNumber: Int, title: String?, body: String?, deepLink: String? = null) {
+    private fun showInAppNotificationWithTitle(type: String, orderId: Int, billId: String?, tableNumber: Int, title: String?, body: String?, deepLink: String? = null) {
         val notification = com.swadratna.swadratna_staff.ui.components.InAppNotification(
             id = System.currentTimeMillis().toString(),
             title = title ?: when (type) {
@@ -240,6 +242,7 @@ class MainActivity : ComponentActivity() {
             },
             type = type,
             orderId = if (orderId != -1) orderId else null,
+            billId = billId,
             tableNumber = if (tableNumber != -1) tableNumber else null,
             deepLink = deepLink
         )

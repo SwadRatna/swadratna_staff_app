@@ -86,39 +86,49 @@ fun OrdersScreen(
         modifier = modifier,
         bottomBar = {
             if (orderDetails != null) {
-                val isCompleted = orderDetails.order.order_status.equals("completed", ignoreCase = true)
-                val haveNoOrderYet = (orderDetails.kots == null || orderDetails.kots.isEmpty() )
-                val showBillGenBtn =  if(haveNoOrderYet) false else if(isCompleted) false else true
-                Row(
-                    modifier = Modifier
-                        .background(MaterialTheme.colorScheme.surface)
-                        .padding(16.dp),
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    Button(
-                        onClick = {
-                            navController.navigate(
-                                NavigationRoute.Bill.createRoute(
-                                    orderID ?: ""
-                                )
-                            )
-                        },
-                        enabled =  showBillGenBtn,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (isCompleted) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary
-                        ),
+                val haveNoOrderYet = orderDetails.kots.isNullOrEmpty()
+                val isBillGenerated = orderDetails.bill_generated == true
+
+                if (!haveNoOrderYet) {
+                    Row(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .height(50.dp)
-                            .clip(RoundedCornerShape(12.dp))
+                            .background(MaterialTheme.colorScheme.surface)
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.Center
                     ) {
-                        Icon(painterResource(R.drawable.ic_recipt), contentDescription = null)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = if (isCompleted) "BILL GENERATED" else "GENERATE BILL",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 16.sp
-                        )
+                        Button(
+                            onClick = {
+                                if (isBillGenerated && orderDetails.bill != null) {
+                                    navController.navigate(
+                                        NavigationRoute.Bill.createRoute(
+                                            billId = orderDetails.bill.id.toString()
+                                        )
+                                    )
+                                } else {
+                                    navController.navigate(
+                                        NavigationRoute.Bill.createRoute(
+                                            orderID ?: ""
+                                        )
+                                    )
+                                }
+                            },
+                            enabled = true,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (isBillGenerated) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary
+                            ),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(50.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                        ) {
+                            Icon(painterResource(R.drawable.ic_recipt), contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = if (isBillGenerated) "GET BILL" else "GENERATE BILL",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp
+                            )
+                        }
                     }
                 }
             }
@@ -250,11 +260,11 @@ fun SuccessLayout(
                 }
             }
         } else {
-            items(orderDetails.kots) { kot ->
+            items(orderDetails.kots!!) { kot ->
                 KotCard(
                     kot = kot,
                     tableLabel = orderDetails.table.table_id,
-                    customerName = orderDetails.user.name,
+                    customerName = orderDetails.user?.name ?: "Guest",
                     onUpdateStatus = onUpdateKotStatus
                 )
             }

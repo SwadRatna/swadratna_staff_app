@@ -56,7 +56,8 @@ import com.swadratna.swadratna_staff.ui.screens.profile.StaffProfileScreen
 import com.swadratna.swadratna_staff.ui.screens.kot.KotListScreen
 import com.swadratna.swadratna_staff.ui.screens.sales.SalesReportScreen
 import com.swadratna.swadratna_staff.ui.theme.fontFamily
-import com.swadratna.swadratna_staff.ui.components.InAppNotificationCard
+import com.swadratna.swadratna_staff.ui.components.NotificationBottomSheet
+import com.swadratna.swadratna_staff.ui.components.NotificationSheetData
 import com.swadratna.swadratna_staff.ui.components.LocalNotificationManager
 
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -303,82 +304,105 @@ fun NavigationComponent(
             }
         }
         
-            // Show in-app notification card if there's a current notification
+            // Show in-app notification sheet if there's a current notification
             currentNotification?.let { notification ->
-                InAppNotificationCard(
+                val sheetData = NotificationSheetData(
                     title = notification.title,
-                    message = notification.message,
+                    body = notification.message,
                     type = notification.type,
-                    orderId = notification.orderId,
-                    tableNumber = notification.tableNumber,
-                    onViewOrderClick = {
-                        notification.deepLink?.let { deepLink ->
-                            // Parse the deep link URI to extract parameters
-                            try {
-                                val uri = android.net.Uri.parse(deepLink)
-                                val tableNumber = uri.getQueryParameter("tableNumber")?.toIntOrNull()
-                                val orderId = uri.getQueryParameter("orderId")?.toIntOrNull()
-                                
-                                if (tableNumber != null && orderId != null) {
-                                    // Use the extracted parameters to navigate
-                                    val route = "${NavigationRoute.OrderTaking.route}/$tableNumber/$orderId?showMenuTab=true&showOrdersTab=true&defaultTab=1"
-                                    navController.navigate(route) {
-                                        popUpTo(navController.graph.findStartDestination().id) {
-                                            inclusive = false
-                                        }
-                                        launchSingleTop = true
-                                    }
-                                } else {
-                                    // If parsing fails, try direct navigation (for other deep link formats)
-                                    navController.navigate(deepLink) {
-                                        popUpTo(navController.graph.findStartDestination().id) {
-                                            inclusive = false
-                                        }
-                                        launchSingleTop = true
-                                    }
-                                }
-                            } catch (e: Exception) {
-                                Log.e("NavigationComponent", "Error parsing deep link: $deepLink", e)
-                                // Fallback to manual route construction
-                                if (notification.type == "new_order" || notification.type == "payment_completed") {
-                                    notification.orderId?.let { orderId ->
-                                        notification.tableNumber?.let { tableNumber ->
-                                            val route = "${NavigationRoute.OrderTaking.route}/$tableNumber/$orderId?showMenuTab=true&showOrdersTab=true&defaultTab=1"
-                                            navController.navigate(route) {
-                                                popUpTo(navController.graph.findStartDestination().id) {
-                                                    inclusive = false
-                                                }
-                                                launchSingleTop = true
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        } ?: run {
-                            // Fallback to manual route construction if no deep link is provided
-                            if (notification.type == "new_order" || notification.type == "payment_completed") {
-                                notification.orderId?.let { orderId ->
-                                    notification.tableNumber?.let { tableNumber ->
-                                        val route = "${NavigationRoute.OrderTaking.route}/$tableNumber/$orderId?showMenuTab=true&showOrdersTab=true&defaultTab=1"
-                                        navController.navigate(route) {
-                                            popUpTo(navController.graph.findStartDestination().id) {
-                                                inclusive = false
-                                            }
-                                            launchSingleTop = true
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    },
+                    orderId = notification.orderId?.toString(),
+                    billId = notification.billId,
+                    tableNumber = notification.tableNumber?.toString(),
+                    deepLink = notification.deepLink
+                )
+
+                NotificationBottomSheet(
+                    data = sheetData,
                     onDismiss = {
                         notificationManager.dismissNotification()
                     },
-                    modifier = Modifier.align(Alignment.Center)
+                    onViewClick = {
+                        notificationManager.dismissNotification()
+                        
+                        when (notification.type) {
+                            "new_kot" -> {
+                                navController.navigate(NavigationRoute.Orders.route) {
+                                    popUpTo(navController.graph.findStartDestination().id) {
+                                        saveState = true
+                                    }
+                                    launchSingleTop = true
+                                    restoreState = true
+                                }
+                            }
+                            "approve_bill" -> {
+                                val billId = notification.billId
+                                val route = if (billId != null) {
+                                    NavigationRoute.Bill.createRoute(billId = billId)
+                                } else {
+                                    NavigationRoute.Bill.route
+                                }
+                                navController.navigate(route) {
+                                    popUpTo(navController.graph.findStartDestination().id) {
+                                        saveState = true
+                                    }
+                                    launchSingleTop = true
+                                    restoreState = true
+                                }
+                            }
+                            else -> {
+                                // Fallback to existing deep link logic
+                                notification.deepLink?.let { deepLink ->
+                                    try {
+                                        val uri = android.net.Uri.parse(deepLink)
+                                        val tableNumber = uri.getQueryParameter("tableNumber")?.toIntOrNull()
+                                        val orderId = uri.getQueryParameter("orderId")?.toIntOrNull()
+                                        
+                                        if (tableNumber != null && orderId != null) {
+                                            val route = "${NavigationRoute.OrderTaking.route}/$tableNumber/$orderId?showMenuTab=true&showOrdersTab=true&defaultTab=1"
+                                            navController.navigate(route) {
+                                                popUpTo(navController.graph.findStartDestination().id) { inclusive = false }
+                                                launchSingleTop = true
+                                            }
+                                        } else {
+                                            navController.navigate(deepLink) {
+                                                popUpTo(navController.graph.findStartDestination().id) { inclusive = false }
+                                                launchSingleTop = true
+                                            }
+                                        }
+                                    } catch (e: Exception) {
+                                        Log.e("NavigationComponent", "Error parsing deep link: $deepLink", e)
+                                        // Fallback manual construction
+                                        if (notification.type == "new_order" || notification.type == "payment_completed") {
+                                            notification.orderId?.let { orderId ->
+                                                notification.tableNumber?.let { tableNumber ->
+                                                    val route = "${NavigationRoute.OrderTaking.route}/$tableNumber/$orderId?showMenuTab=true&showOrdersTab=true&defaultTab=1"
+                                                    navController.navigate(route) {
+                                                        popUpTo(navController.graph.findStartDestination().id) { inclusive = false }
+                                                        launchSingleTop = true
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                } ?: run {
+                                     // Manual construction fallback if no deep link
+                                     if (notification.type == "new_order" || notification.type == "payment_completed") {
+                                         notification.orderId?.let { orderId ->
+                                             notification.tableNumber?.let { tableNumber ->
+                                                 val route = "${NavigationRoute.OrderTaking.route}/$tableNumber/$orderId?showMenuTab=true&showOrdersTab=true&defaultTab=1"
+                                                 navController.navigate(route) {
+                                                     popUpTo(navController.graph.findStartDestination().id) { inclusive = false }
+                                                     launchSingleTop = true
+                                                 }
+                                             }
+                                         }
+                                     }
+                                }
+                            }
+                        }
+                    }
                 )
             }
-
-
         }
     }
 }

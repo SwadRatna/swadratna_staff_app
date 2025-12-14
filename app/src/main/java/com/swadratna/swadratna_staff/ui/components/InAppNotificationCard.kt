@@ -162,6 +162,7 @@ data class InAppNotification(
     val message: String,
     val type: String,
     val orderId: Int? = null,
+    val billId: String? = null,
     val tableNumber: Int? = null,
     val deepLink: String? = null,
     val timestamp: Long = System.currentTimeMillis()

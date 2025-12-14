@@ -1,12 +1,14 @@
 package com.swadratna.swadratna_staff.ui.screens.profile
 
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.swadratna.swadratna_staff.data.local.dao.StaffUserDao
 import com.swadratna.swadratna_staff.data.remote.repositories.AuthRepository
 import com.swadratna.swadratna_staff.utils.permissions.PermissionManager
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import com.swadratna.swadratna_staff.data.local.entities.StaffUser
 import kotlinx.coroutines.flow.StateFlow
@@ -17,7 +19,8 @@ import javax.inject.Inject
 class ProfileViewmodel @Inject constructor(
     private val authRepository: AuthRepository,
     private val staffUserDao: StaffUserDao,
-    val permissionManager: PermissionManager
+    val permissionManager: PermissionManager,
+    @ApplicationContext private val context: Context
 ) : ViewModel() {
 
     val permissions = permissionManager.currentUserPermissions
@@ -64,10 +67,22 @@ class ProfileViewmodel @Inject constructor(
         _isLoading.value = true
         _error.value = null
         viewModelScope.launch {
-            authRepository.logout()
-            staffUserDao.clearStaffUsers()
-             _isLoading.value = false
-            _logoutSuccess.value = true
+            try {
+                authRepository.logout()
+                staffUserDao.clearStaffUsers()
+
+                // Clear Table Occupancy & Cart Data (stored in deep_link_prefs)
+                context.getSharedPreferences("deep_link_prefs", Context.MODE_PRIVATE).edit().clear().apply()
+
+                // Clear User Data / FCM Token (stored in app_prefs)
+                context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE).edit().clear().apply()
+
+                _isLoading.value = false
+                _logoutSuccess.value = true
+            } catch (e: Exception) {
+                _error.value = e.message
+                _isLoading.value = false
+            }
         }
     }
 

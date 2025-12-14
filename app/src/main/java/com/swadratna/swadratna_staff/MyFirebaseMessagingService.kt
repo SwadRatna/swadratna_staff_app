@@ -56,19 +56,24 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
     }
 
     private fun handleDataMessage(data: Map<String, String>) {
-        val title = data["title"] ?: "SwadRatna"
-        val body = data["body"] ?: ""
-        val type = data["type"] ?: "general"
+        val type = data["type"] ?: data["action"] ?: "general"
         val orderId = data["order_id"]
+        val billId = data["bill_id"]
         val tableNumber = data["table_number"]
-        val priority = data["priority"] ?: "normal"
+        val deepLink = data["deeplink"]
         
-        Log.d(TAG, "Handling data message - Type: $type, OrderId: $orderId, TableNumber: $tableNumber, Priority: $priority")
+        Log.d(TAG, "Handling data message - Type: $type, OrderId: $orderId, BillId: $billId, TableNumber: $tableNumber")
         
-        val notificationBody = when (type) {
-            DeepLinkType.TYPE_NEWORDER.type -> "New order received${if (tableNumber != null) " for table $tableNumber" else ""}"
-            DeepLinkType.TYPE_REQUESTBILL.type -> "Customer bill Requested ${if (tableNumber != null) " for table $tableNumber" else ""}"
-            else -> body
+        val title = when (type) {
+            "new_kot" -> "New KOT Received"
+            "approve_bill" -> "Bill Approval Request"
+            else -> data["title"] ?: "SwadRatna"
+        }
+
+        val body = when (type) {
+            "new_kot" -> "New items ordered for ${tableNumber ?: "a table"}"
+            "approve_bill" -> "Bill approval requested for Order #$orderId"
+            else -> data["body"] ?: ""
         }
 
         // Check if app is in foreground
@@ -78,18 +83,18 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
             val intent = Intent(this, MainActivity::class.java).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
                 putExtra("notification_type", type)
-                orderId?.let { putExtra("orderId", it.toIntOrNull()) }
-                tableNumber?.let { putExtra("tableNumber", it.toIntOrNull()) }
+                putExtra("order_id", orderId)
+                putExtra("bill_id", billId)
+                putExtra("table_number", tableNumber)
                 putExtra("notification_title", title)
-                putExtra("notification_body", notificationBody)
-                putExtra("from_notification", true)
+                putExtra("notification_body", body)
                 putExtra("in_app_notification", true) // Flag to indicate this is for in-app notification
-                data["deeplink"]?.let { putExtra("deeplink", it) } // Pass the deep link from API
+                putExtra("deeplink", deepLink)
             }
             startActivity(intent)
         } else {
             Log.d(TAG, "App is in background, sending system notification")
-            sendNotification(title, notificationBody, data["deeplink"],type, orderId, tableNumber, priority)
+            sendNotification(title, body, deepLink, type, orderId, tableNumber, "high")
         }
     }
 
