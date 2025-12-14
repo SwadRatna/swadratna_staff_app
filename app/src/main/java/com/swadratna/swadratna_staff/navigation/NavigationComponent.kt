@@ -66,11 +66,15 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.swadratna.swadratna_staff.data.remote.model.StaffRole
 
+import com.swadratna.swadratna_staff.ui.screens.orders.OrdersScreen
+import com.swadratna.swadratna_staff.ui.screens.orders.OrderManagementViewModel
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NavigationComponent(
     navController: NavHostController = rememberNavController(),
     startDestination: String,
+    deepLinkTrigger: Int = 0,
     viewModel: NavigationViewModel = hiltViewModel()
 ) {
     val staffRole by viewModel.staffRole.collectAsState()
@@ -102,7 +106,7 @@ fun NavigationComponent(
 
     // Handle deep link navigation
     val context = LocalContext.current
-    LaunchedEffect(currentRoute) {
+    LaunchedEffect(currentRoute, deepLinkTrigger) {
         // Only process deep links when we're on a valid screen (not login)
         if (currentRoute != NavigationRoute.Login.route && currentRoute != null) {
             Log.d("NavigationComponent", "Checking for deep link data on route: $currentRoute")
@@ -110,10 +114,32 @@ fun NavigationComponent(
             Log.d("NavigationComponent", "Deep link data found: ${deepLinkData != null}")
             
             if (deepLinkData != null) {
-                val (type, orderId, tableNumber) = deepLinkData
-                Log.d("NavigationComponent", "Processing deep link - Type: $type, OrderId: $orderId, TableNumber: $tableNumber")
+                val (type, orderId, billId, tableNumber) = deepLinkData
+                Log.d("NavigationComponent", "Processing deep link - Type: $type, OrderId: $orderId, BillId: $billId, TableNumber: $tableNumber")
                 
-                if (type == "order" || type == "deep_link_order" || type == "new_order") {
+                if (type == "new_kot") {
+                     val route = "orders/$orderId"
+                     navController.navigate(route) {
+                        popUpTo(navController.graph.findStartDestination().id) {
+                            inclusive = false
+                        }
+                        launchSingleTop = true
+                    }
+                    MainActivity.clearDeepLinkData(context)
+                } else if (type == "approve_bill") {
+                     val route = if (billId != null) {
+                        NavigationRoute.Bill.createRoute(billId = billId)
+                    } else {
+                        NavigationRoute.Bill.route
+                    }
+                    navController.navigate(route) {
+                        popUpTo(navController.graph.findStartDestination().id) {
+                            inclusive = false
+                        }
+                        launchSingleTop = true
+                    }
+                    MainActivity.clearDeepLinkData(context)
+                } else if (type == "order" || type == "deep_link_order" || type == "new_order") {
                     // Navigate to order taking screen
                     val route = "${NavigationRoute.OrderTaking.route}/$tableNumber/$orderId?showMenuTab=true&showOrdersTab=true&defaultTab=1"
                     Log.d("NavigationComponent", "Navigating to order taking screen: $route")
@@ -237,6 +263,18 @@ fun NavigationComponent(
                     navController = navController
                 )
             }
+            composable(
+                route = "orders/{orderId}",
+                arguments = listOf(navArgument("orderId") { type = NavType.StringType })
+            ) { backStackEntry ->
+                val orderId = backStackEntry.arguments?.getString("orderId")
+                val viewModel: OrderManagementViewModel = hiltViewModel()
+                OrdersScreen(
+                    navController = navController,
+                    orderID = orderId,
+                    viewModel = viewModel
+                )
+            }
             composable(route = NavigationRoute.Profile.route) {
                 StaffProfileScreen(navController = navController)
             }
@@ -330,12 +368,23 @@ fun NavigationComponent(
                         
                         when (notification.type) {
                             "new_kot" -> {
-                                navController.navigate(NavigationRoute.Orders.route) {
-                                    popUpTo(navController.graph.findStartDestination().id) {
-                                        saveState = true
+                                val orderId = notification.orderId?.toString()
+                                if (orderId != null) {
+                                     navController.navigate("orders/$orderId") {
+                                        popUpTo(navController.graph.findStartDestination().id) {
+                                            saveState = true
+                                        }
+                                        launchSingleTop = true
+                                        restoreState = true
                                     }
-                                    launchSingleTop = true
-                                    restoreState = true
+                                } else {
+                                    navController.navigate(NavigationRoute.Orders.route) {
+                                        popUpTo(navController.graph.findStartDestination().id) {
+                                            saveState = true
+                                        }
+                                        launchSingleTop = true
+                                        restoreState = true
+                                    }
                                 }
                             }
                             "approve_bill" -> {

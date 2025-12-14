@@ -40,16 +40,17 @@ import javax.inject.Inject
 class MainActivity : ComponentActivity() {
 
     companion object {
-        fun getDeepLinkData(context: Context): Triple<String?, Int, Int>? {
+        fun getDeepLinkData(context: Context): DeepLinkData? {
             val sharedPref = context.getSharedPreferences("deep_link_prefs", Context.MODE_PRIVATE)
-            val deepLinkType = sharedPref.getString("deep_link_type", null)
-            val deepLinkOrderId = sharedPref.getInt("deep_link_order_id", -1)
-            val deepLinkTableNumber = sharedPref.getInt("deep_link_table_number", -1)
+            val type = sharedPref.getString("deep_link_type", null)
+            val orderId = sharedPref.getInt("deep_link_order_id", -1)
+            val billId = sharedPref.getString("deep_link_bill_id", null)
+            val tableNumber = sharedPref.getInt("deep_link_table_number", -1)
             
-            Log.d("MainActivity", "getDeepLinkData - Type: $deepLinkType, OrderId: $deepLinkOrderId, TableNumber: $deepLinkTableNumber")
+            Log.d("MainActivity", "getDeepLinkData - Type: $type, OrderId: $orderId, BillId: $billId, TableNumber: $tableNumber")
             
-            return if (deepLinkType != null && deepLinkOrderId != -1 && deepLinkTableNumber != -1) {
-                Triple(deepLinkType, deepLinkOrderId, deepLinkTableNumber)
+            return if (type != null) {
+                DeepLinkData(type, orderId, billId, tableNumber)
             } else {
                 null
             }
@@ -71,6 +72,7 @@ class MainActivity : ComponentActivity() {
     
     private lateinit var notificationManager: InAppNotificationManager
     private var isAppInForeground = false
+    private var deepLinkTrigger = mutableStateOf(0)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -130,7 +132,8 @@ class MainActivity : ComponentActivity() {
                     startDestination?.let { destination ->
                         InAppNotificationProvider(notificationManager = notificationManager) {
                             NavigationComponent(
-                                startDestination = destination
+                                startDestination = destination,
+                                deepLinkTrigger = deepLinkTrigger.value
                             )
                         }
                     }
@@ -182,14 +185,9 @@ class MainActivity : ComponentActivity() {
                 if (inAppNotification) {
                     showInAppNotificationWithTitle(notificationType, orderId, billId, tableNumber, notificationTitle, notificationBody, deepLink)
                 } else {
-                    // Check if app is in foreground (already open)
-                    if (isAppInForeground()) {
-                        // Show in-app notification instead of deep link navigation
-                        showInAppNotification(notificationType, orderId, billId, tableNumber, deepLink)
-                    } else {
-                        // App is in background, use deep link navigation
-                        handleDeepLinkNavigation(notificationType, orderId, tableNumber)
-                    }
+                    // It's a system notification click (or deep link)
+                    // Always navigate directly, even if app is in foreground
+                    handleDeepLinkNavigation(notificationType, orderId, billId, tableNumber)
                 }
             }
         }
@@ -198,7 +196,7 @@ class MainActivity : ComponentActivity() {
     private fun isAppInForeground(): Boolean {
         return this.isAppInForeground
     }
-    
+
     private fun showInAppNotification(type: String, orderId: Int, billId: String?, tableNumber: Int, deepLink: String? = null) {
         val notification = com.swadratna.swadratna_staff.ui.components.InAppNotification(
             id = System.currentTimeMillis().toString(),
@@ -263,7 +261,7 @@ class MainActivity : ComponentActivity() {
                     val orderId = data.getQueryParameter("orderId")?.toIntOrNull() ?: -1
                     
                     if (tableNumber != -1 && orderId != -1) {
-                        handleDeepLinkNavigation("deep_link_order", orderId, tableNumber)
+                        handleDeepLinkNavigation("deep_link_order", orderId, null, tableNumber)
                     }
                 }
                 
@@ -273,23 +271,34 @@ class MainActivity : ComponentActivity() {
                     val orderId = data.getQueryParameter("orderId")?.toIntOrNull() ?: -1
                     
                     if (tableNumber != -1 && orderId != -1) {
-                        handleDeepLinkNavigation("deep_link_order", orderId, tableNumber)
+                        handleDeepLinkNavigation("deep_link_order", orderId, null, tableNumber)
                     }
                 }
             }
         }
     }
 
-    private fun handleDeepLinkNavigation(type: String, orderId: Int, tableNumber: Int) {
+    private fun handleDeepLinkNavigation(type: String, orderId: Int, billId: String?, tableNumber: Int) {
         val sharedPref = getSharedPreferences("deep_link_prefs", Context.MODE_PRIVATE)
         sharedPref.edit().apply {
             putString("deep_link_type", type)
             putInt("deep_link_order_id", orderId)
+            putString("deep_link_bill_id", billId)
             putInt("deep_link_table_number", tableNumber)
             apply()
         }
+        deepLinkTrigger.value += 1
     }
+    
+
 }
+
+data class DeepLinkData(
+    val type: String,
+    val orderId: Int,
+    val billId: String?,
+    val tableNumber: Int
+)
 
 data class RegisterDeviceTokenRequest(
     val device_id: String,

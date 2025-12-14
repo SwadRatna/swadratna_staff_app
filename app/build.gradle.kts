@@ -104,6 +104,9 @@ dependencies {
     // Firebase Cloud Messaging
     implementation("com.google.firebase:firebase-messaging")
 
+    // Image Loading
+    implementation("io.coil-kt:coil-compose:2.6.0")
+
     implementation("com.google.accompanist:accompanist-systemuicontroller:0.34.0")
 
     // Testing

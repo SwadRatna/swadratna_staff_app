@@ -83,9 +83,9 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
             val intent = Intent(this, MainActivity::class.java).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
                 putExtra("notification_type", type)
-                putExtra("order_id", orderId)
+                putExtra("order_id", orderId?.toIntOrNull() ?: -1)
                 putExtra("bill_id", billId)
-                putExtra("table_number", tableNumber)
+                putExtra("table_number", tableNumber?.toIntOrNull() ?: -1)
                 putExtra("notification_title", title)
                 putExtra("notification_body", body)
                 putExtra("in_app_notification", true) // Flag to indicate this is for in-app notification
@@ -125,8 +125,15 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         val intent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             putExtra("notification_type", type)
-            orderId?.let { putExtra("orderId", it.toIntOrNull()) }
-            tableNumber?.let { putExtra("tableNumber", it.toIntOrNull()) }
+            putExtra("order_id", orderId?.toIntOrNull() ?: -1)
+            putExtra("table_number", tableNumber?.toIntOrNull() ?: -1)
+            
+            // Add other data that might be needed
+            if (type == "approve_bill" && deepLink != null) {
+                 val uri = deepLink.toUri()
+                 val billId = uri.getQueryParameter("billId")
+                 putExtra("bill_id", billId)
+            }
 
 
             if (type == "new_order" || type == "payment_completed") {
@@ -141,7 +148,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
 
         val pendingIntent = PendingIntent.getActivity(
             this,
-            0,
+            System.currentTimeMillis().toInt(),
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )

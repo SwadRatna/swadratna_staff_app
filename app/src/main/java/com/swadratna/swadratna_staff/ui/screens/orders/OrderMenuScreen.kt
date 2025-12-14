@@ -18,6 +18,11 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.Menu
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.ui.layout.ContentScale
+import coil.compose.AsyncImage
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -136,7 +141,7 @@ fun OrderMenuScreen(
                         categories = categories,
                         selectedCategoryId = selectedCategoryId, // Pass ID
                         onCategorySelected = { selectedCategoryId = it?.id }, // Use category.id
-                        modifier = Modifier.weight(0.35f)
+                        modifier = Modifier.weight(0.30f)
                     )
 
                     Spacer(modifier = Modifier.width(12.dp))
@@ -147,7 +152,7 @@ fun OrderMenuScreen(
                         onUpdateOrder = { itemId, quantity ->
                             viewModel.updateOrderItem(itemId, quantity)
                         },
-                        modifier = Modifier.weight(0.65f)
+                        modifier = Modifier.weight(0.70f)
                     )
                 }
             }
@@ -215,17 +220,44 @@ fun CategoryList(
     modifier: Modifier = Modifier
 ) {
     LazyColumn(
-        modifier = modifier.padding(8.dp),
+        modifier = modifier.padding(4.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         items(categories) { category ->
             // Check selection using ID
-            CategoryItem(
+            CompactCategoryItem(
                 category = category,
                 isSelected = category.id == selectedCategoryId,
                 onCategorySelected = { onCategorySelected(category) }
             )
         }
+    }
+}
+
+@Composable
+fun CompactCategoryItem(
+    category: Category,
+    isSelected: Boolean,
+    onCategorySelected: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(45.dp) // Thinner height
+            .clip(RoundedCornerShape(8.dp))
+            .background(if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface)
+            .clickable(onClick = onCategorySelected)
+            .padding(horizontal = 4.dp), // Less padding
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = category.name,
+            color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
+            textAlign = TextAlign.Center,
+            style = MaterialTheme.typography.bodyMedium, // Smaller text
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis
+        )
     }
 }
 
@@ -236,10 +268,12 @@ fun MenuItemList(
     onUpdateOrder: (Int, Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    LazyColumn(
+    LazyVerticalGrid(
+        columns = GridCells.Fixed(2),
         modifier = modifier.fillMaxHeight(),
         verticalArrangement = Arrangement.spacedBy(8.dp),
-        contentPadding = PaddingValues(bottom = 16.dp)
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        contentPadding = PaddingValues(bottom = 80.dp) // Add padding for bottom summary pill
     ) {
         items(menuItems) { item ->
             MenuItemOrderCard(
@@ -264,114 +298,145 @@ fun MenuItemOrderCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         modifier = Modifier
             .fillMaxWidth()
-            .height(100.dp),
+            // Height is determined by content, but we can set a min height or fixed height if needed.
+            // Let it wrap content for now, or set a fixed height for uniformity.
+            .height(220.dp), 
         colors = CardDefaults.cardColors(MaterialTheme.colorScheme.surface)
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            // Item Details
-            Column(
+            // Image
+            Box(
                 modifier = Modifier
-                    .weight(1f)
-                    .fillMaxHeight(),
-                verticalArrangement = Arrangement.Center
+                    .fillMaxWidth()
+                    .weight(0.55f) // Take up about 55% of the card height
             ) {
-                Text(
-                    text = item.name,
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 16.sp,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "₹${item.price}",
-                    color = MaterialTheme.colorScheme.primary,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Medium
-                )
-            }
-
-            // Quantity Controls
-            if (quantity == 0) {
-                Button(
-                    onClick = { onUpdateOrder(1) },
-                    shape = RoundedCornerShape(8.dp),
-                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
-                    modifier = Modifier.widthIn(min = 80.dp)
-                ) {
-                    Icon(
-                        Icons.Default.Add,
-                        contentDescription = "Add",
-                        modifier = Modifier.size(18.dp)
+                if (item.image.isNotBlank()) {
+                    AsyncImage(
+                        model = item.image,
+                        contentDescription = item.name,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
                     )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("ADD", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                }
-            } else {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
+                } else {
+                    // Placeholder if no image
                     Box(
                         modifier = Modifier
-                            .size(32.dp)
-                            .background(
-                                MaterialTheme.colorScheme.errorContainer,
-                                CircleShape
-                            )
-                            .clickable(
-                                enabled = true,
-                                onClick = {
-                                    onUpdateOrder(quantity - 1)
-                                }
-                            ),
+                            .fillMaxSize()
+                            .background(MaterialTheme.colorScheme.surfaceVariant),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            Icons.Filled.Delete,
-                            contentDescription = "Remove",
-                            tint = MaterialTheme.colorScheme.onErrorContainer,
-                            modifier = Modifier.size(20.dp)
+                            imageVector = Icons.Outlined.Menu, // Or a food icon
+                            contentDescription = "No Image",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-
+                }
+            }
+            
+            // Details
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(0.45f)
+                    .padding(4.dp),
+                verticalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column {
                     Text(
-                        text = quantity.toString(),
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.widthIn(min = 24.dp),
-                        textAlign = TextAlign.Center
+                        text = item.name,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        lineHeight = 18.sp
                     )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "₹${item.price}",
+                        color = MaterialTheme.colorScheme.primary,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
 
-                    Box(
+                Spacer(modifier = Modifier.height(4.dp))
+
+                // Quantity Controls
+                if (quantity == 0) {
+                    Button(
+                        onClick = { onUpdateOrder(1) },
+                        shape = RoundedCornerShape(8.dp),
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
                         modifier = Modifier
-                            .size(32.dp)
-                            .background(
-                                MaterialTheme.colorScheme.primary,
-                                CircleShape
-                            )
-                            .clickable(
-                                enabled = true,
-                                onClick = {
-                                    onUpdateOrder(quantity + 1)
-                                }
-                            ),
-                        contentAlignment = Alignment.Center
+                            .fillMaxWidth()
+                            .height(32.dp)
                     ) {
-                        Icon(
-                            Icons.Default.Add,
-                            contentDescription = "Add",
-                            tint = MaterialTheme.colorScheme.surface,
-                            modifier = Modifier.size(20.dp)
+                        Text("ADD", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                    }
+                } else {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(28.dp)
+                                .background(
+                                    MaterialTheme.colorScheme.errorContainer,
+                                    RoundedCornerShape(4.dp)
+                                )
+                                .clickable(
+                                    enabled = true,
+                                    onClick = {
+                                        onUpdateOrder(quantity - 1)
+                                    }
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                Icons.Filled.Delete, // Or Minus if > 1, but logic handles 0
+                                contentDescription = "Remove",
+                                tint = MaterialTheme.colorScheme.onErrorContainer,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+
+                        Text(
+                            text = quantity.toString(),
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary,
+                            textAlign = TextAlign.Center
                         )
+
+                        Box(
+                            modifier = Modifier
+                                .size(28.dp)
+                                .background(
+                                    MaterialTheme.colorScheme.primary,
+                                    RoundedCornerShape(4.dp)
+                                )
+                                .clickable(
+                                    enabled = true,
+                                    onClick = {
+                                        onUpdateOrder(quantity + 1)
+                                    }
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                Icons.Default.Add,
+                                contentDescription = "Add",
+                                tint = MaterialTheme.colorScheme.surface,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
                     }
                 }
             }
