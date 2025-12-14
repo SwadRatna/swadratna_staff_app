@@ -53,6 +53,7 @@ import com.swadratna.swadratna_staff.ui.orderDashboard.OrderDashboard
 import com.swadratna.swadratna_staff.ui.screens.login.LoginScreen
 import com.swadratna.swadratna_staff.ui.screens.orders.PayBillScreen
 import com.swadratna.swadratna_staff.ui.screens.profile.StaffProfileScreen
+import com.swadratna.swadratna_staff.ui.screens.attendance.AttendanceScreen
 import com.swadratna.swadratna_staff.ui.screens.kot.KotListScreen
 import com.swadratna.swadratna_staff.ui.screens.sales.SalesReportScreen
 import com.swadratna.swadratna_staff.ui.theme.fontFamily
@@ -239,6 +240,9 @@ fun NavigationComponent(
             composable(route = NavigationRoute.Profile.route) {
                 StaffProfileScreen(navController = navController)
             }
+            composable(route = NavigationRoute.Attendance.route) {
+                AttendanceScreen(navController = navController)
+            }
             composable(
                 route = "${NavigationRoute.OrderTaking.route}/{tableNumber}/{orderId}?showMenuTab={showMenuTab}&showOrdersTab={showOrdersTab}&defaultTab={defaultTab}",
                 arguments = listOf(
@@ -414,6 +418,7 @@ sealed class NavigationRoute(val route: String, val title: String, val icon: Int
     }
     object Tables : NavigationRoute("tables", "Tables", R.drawable.ic_table)
     object Inventory : NavigationRoute("inventory", "Inventory", R.drawable.ic_inventory)
+    object Attendance : NavigationRoute("attendance", "Attendance", R.drawable.ic_attendance)
     object Profile : NavigationRoute("profile", "Profile", R.drawable.ic_person)
     object OrderTaking : NavigationRoute("order_taking", "Order Taking", R.drawable.ic_order) {
         fun createRoute(
