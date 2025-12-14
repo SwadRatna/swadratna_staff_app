@@ -32,6 +32,11 @@ import com.swadratna.swadratna_staff.data.remote.model.FreeTableResponse
 import com.swadratna.swadratna_staff.data.remote.services.RecordPaymentRequest
 import com.swadratna.swadratna_staff.data.remote.services.RecordPaymentResponse
 import com.swadratna.swadratna_staff.data.remote.model.SalesResponse
+import com.swadratna.swadratna_staff.data.remote.model.StaffListResponse
+import com.swadratna.swadratna_staff.data.remote.model.AttendanceCheckInRequest
+import com.swadratna.swadratna_staff.data.remote.model.AttendanceCheckOutRequest
+import com.swadratna.swadratna_staff.data.remote.model.AttendanceModifyRequest
+import okhttp3.ResponseBody
 
 data class BillActionRequest(
     val action: String,
@@ -51,6 +56,9 @@ interface ApiService {
         @Query("mobile") mobile: String?,
         @Query("userName") username: String?
     ): Response<CustomerResponse>
+
+    @GET("/api/v1/staff/members")
+    suspend fun getStaffMembers(): Response<StaffListResponse>
 
     @POST("/api/v1/staff/occupyTable")
     suspend fun occupyTable(@Body request: OccupyTableRequest): Response<OccupyTableResponse>
@@ -142,4 +150,15 @@ interface ApiService {
         @Query("order_type") orderType: String? = null
     ): Response<SalesResponse>
 
+    @POST("/api/v1/staff/attendance/checkin")
+    suspend fun checkIn(@Body request: AttendanceCheckInRequest): Response<ResponseBody>
+
+    @POST("/api/v1/staff/attendance/checkout")
+    suspend fun checkOut(@Body request: AttendanceCheckOutRequest): Response<ResponseBody>
+
+    @PATCH("/api/v1/staff/attendance/{id}")
+    suspend fun modifyAttendance(
+        @Path("id") id: Int,
+        @Body request: AttendanceModifyRequest
+    ): Response<ResponseBody>
 }

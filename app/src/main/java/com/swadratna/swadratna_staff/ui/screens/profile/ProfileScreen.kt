@@ -1,6 +1,5 @@
 package com.swadratna.swadratna_staff.ui.screens.profile
 
-
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -211,6 +210,12 @@ fun StaffProfileScreen(
                     title = "Inventory",
                     subtitle = "Manage inventory items",
                     onClick = { navController.navigate(NavigationRoute.Inventory.route) }
+                )
+                ProfileMenuItem(
+                    icon = ImageVector.vectorResource(R.drawable.ic_attendance),
+                    title = "Attendance",
+                    subtitle = "Manage staff attendance",
+                    onClick = { navController.navigate(NavigationRoute.Attendance.route) }
                 )
             }
 

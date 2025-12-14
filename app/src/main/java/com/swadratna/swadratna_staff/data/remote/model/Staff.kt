@@ -17,5 +17,8 @@ data class Staff(
     val status: String,
     val store_id: Int,
     val tenant_id: Int,
-    val updated_at: String
+    val today_status: String? = null,
+    val today_check_in: String? = null,
+    val today_check_out: String? = null,
+    val current_attendance: CurrentAttendance? = null
 )
