@@ -3,7 +3,12 @@ package com.swadratna.swadratna_staff.utils
 import android.app.AlertDialog
 import android.content.Context
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.Canvas
+import android.graphics.Color
 import android.graphics.Paint
+import android.graphics.drawable.BitmapDrawable
 import android.graphics.pdf.PdfDocument
 import android.os.Build
 import android.os.Environment
@@ -11,6 +16,8 @@ import androidx.core.content.ContextCompat
 import com.dantsu.escposprinter.EscPosPrinter
 import com.dantsu.escposprinter.connection.bluetooth.BluetoothPrintersConnections
 import com.dantsu.escposprinter.exceptions.EscPosConnectionException
+import com.dantsu.escposprinter.textparser.PrinterTextParserImg
+import com.swadratna.swadratna_staff.R
 import com.swadratna.swadratna_staff.data.remote.model.Address
 import com.swadratna.swadratna_staff.data.remote.model.BillDetail
 import java.io.File
@@ -126,6 +133,9 @@ class BillPrinterUtil {
 
             val sb = StringBuilder()
 
+            // Logo Placeholder
+            sb.append("<logo>\n")
+            sb.append("\n")
             // Store Header - Centered and Bold
             sb.append("[C]<b>${storeName}</b>\n")
 
@@ -240,6 +250,112 @@ class BillPrinterUtil {
         }
 
         /**
+         * Helper to inject logo hex string into the bill text
+         */
+        private fun injectLogo(
+            context: Context,
+            printer: EscPosPrinter,
+            billText: String
+        ): String {
+            return try {
+
+                // ===============================
+                // 1. Decode bitmap bounds only
+                // ===============================
+                val boundsOptions = BitmapFactory.Options().apply {
+                    inJustDecodeBounds = true
+                }
+                BitmapFactory.decodeResource(
+                    context.resources,
+                    R.drawable.ic_logo_main,
+                    boundsOptions
+                )
+
+                // ===============================
+                // 2. Calculate inSampleSize
+                // ===============================
+                val targetImageWidthPx = 250 // logo width you want
+                var inSampleSize = 1
+                if (boundsOptions.outWidth > targetImageWidthPx) {
+                    var halfWidth = boundsOptions.outWidth / 2
+                    while (halfWidth / inSampleSize >= targetImageWidthPx) {
+                        inSampleSize *= 2
+                    }
+                }
+
+                val decodeOptions = BitmapFactory.Options().apply {
+                    inSampleSize = inSampleSize
+                }
+
+                val decodedBitmap = BitmapFactory.decodeResource(
+                    context.resources,
+                    R.drawable.ic_logo_main,
+                    decodeOptions
+                ) ?: return billText.replace("<logo>", "")
+
+                // ===============================
+                // 3. Scale bitmap to target width
+                // ===============================
+                val aspectRatio =
+                    decodedBitmap.height.toFloat() / decodedBitmap.width.toFloat()
+
+                val scaledHeight =
+                    (targetImageWidthPx * aspectRatio).toInt()
+
+                val scaledBitmap = Bitmap.createScaledBitmap(
+                    decodedBitmap,
+                    targetImageWidthPx,
+                    scaledHeight,
+                    true
+                )
+
+                // ===============================
+                // 4. Calculate printable width (in pixels)
+                // ===============================
+                val printableWidthPx = (
+                        (printer.printerWidthMM * printer.printerDpi) / 25.4f
+                        ).toInt()
+
+                // ===============================
+                // 5. Create padded bitmap (CENTERED)
+                // ===============================
+                val centeredBitmap = Bitmap.createBitmap(
+                    printableWidthPx,
+                    scaledBitmap.height,
+                    Bitmap.Config.ARGB_8888
+                )
+
+                val canvas = Canvas(centeredBitmap)
+                canvas.drawColor(Color.WHITE)
+
+                val leftPadding =
+                    ((printableWidthPx - scaledBitmap.width) / 2f).coerceAtLeast(0f)
+
+                canvas.drawBitmap(scaledBitmap, leftPadding, 0f, null)
+
+                // ===============================
+                // 6. Convert to Drawable
+                // ===============================
+                val drawable = BitmapDrawable(
+                    context.resources,
+                    centeredBitmap
+                )
+
+                // ===============================
+                // 7. Convert to ESC/POS hex image
+                // ===============================
+                val hexString =
+                    PrinterTextParserImg.bitmapToHexadecimalString(printer, drawable)
+
+                billText.replace("<logo>", "<img>$hexString</img>")
+
+            } catch (e: Exception) {
+                e.printStackTrace()
+                billText.replace("<logo>", "")
+            }
+        }
+
+        /**
          * Attempts to print via Bluetooth thermal printer
          */
         fun printViaBluetooth(context: Context, billText: String): Boolean {
@@ -252,7 +368,8 @@ class BillPrinterUtil {
                         PAPER_WIDTH_MM.toFloat(),
                         CHAR_WIDTH
                     )
-                    printer.printFormattedText(billText)
+                    val finalBillText = injectLogo(context, printer, billText)
+                    printer.printFormattedText(finalBillText)
                     true
                 } else {
                     false
@@ -361,6 +478,7 @@ class BillPrinterUtil {
                 .replace("[R]", "")
                 .replace("<b>", "")
                 .replace("</b>", "")
+                .replace("<logo>", "") // Strip logo placeholder
                 .replace(Regex("\\[.*?\\]"), "")
         }
 
@@ -531,20 +649,14 @@ class BillPrinterUtil {
                             PAPER_WIDTH_MM.toFloat(),
                             CHAR_WIDTH
                         )
-                        printer.printFormattedTextAndCut(billText)
+                        val finalBillText = injectLogo(context, printer, billText)
+                        printer.printFormattedTextAndCut(finalBillText)
                         printer.disconnectPrinter()
                         onDone(true, "Printed successfully using $defaultName")
                         return
                     } catch (e: Exception) {
                         e.printStackTrace()
-                        // Fallback to chooser if default printer fails?
-                        // User requested: "if that printer available just print using this only"
-                        // But if it fails, maybe we should let them choose another one or just fail.
-                        // Let's try to fall back to chooser so they aren't stuck.
-                        // Or maybe just return failure as per "you should not give option to slect veerytime"
-                        // However, practical UX suggests if the default fails, maybe they want to pick another.
-                        // Let's show a toast that default failed and open chooser.
-                        // For now, I will stick to the chooser fallback for robustness.
+                        // Fallback to chooser handled below
                     }
                 }
             }
@@ -572,7 +684,8 @@ class BillPrinterUtil {
                         )
                         
                         // Print and cut
-                        printer.printFormattedTextAndCut(billText)
+                        val finalBillText = injectLogo(context, printer, billText)
+                        printer.printFormattedTextAndCut(finalBillText)
                         
                         // Disconnect when done
                         printer.disconnectPrinter()
