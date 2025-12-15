@@ -31,6 +31,8 @@ class BillPrinterUtil {
     companion object {
         private const val PAPER_WIDTH_MM = 58 // Standard thermal printer width
         private const val CHAR_WIDTH = 32 // Characters per line for 58mm paperval
+        private const val ESC_POS_LEFT_BIAS_PX = 24 // try 16–32
+
         val colItem = 15
         val colQty = 6
         val colPrice = 7
@@ -329,9 +331,10 @@ class BillPrinterUtil {
                 canvas.drawColor(Color.WHITE)
 
                 val leftPadding =
-                    ((printableWidthPx - scaledBitmap.width) / 2f).coerceAtLeast(0f)
+                    ((printableWidthPx - scaledBitmap.width) / 2f) - ESC_POS_LEFT_BIAS_PX
 
-                canvas.drawBitmap(scaledBitmap, leftPadding, 0f, null)
+                val finalLeftPadding = leftPadding.coerceAtLeast(0f)
+                canvas.drawBitmap(scaledBitmap, finalLeftPadding, 0f, null)
 
                 // ===============================
                 // 6. Convert to Drawable
