@@ -21,7 +21,7 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object NetworkModule {
 
-    const val BASE_URL = "https://api.engineerfoodie.in/"
+    const val BASE_URL = "https://api.engineerfoodies.in/"
     const val X_KEY_HEADER = "X-Key"
     const val X_KEY_VALUE = "RMWvXbJYiKDtjtCEj03iGP"
 
