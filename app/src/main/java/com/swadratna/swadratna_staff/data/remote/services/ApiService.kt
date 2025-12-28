@@ -36,6 +36,7 @@ import com.swadratna.swadratna_staff.data.remote.model.StaffListResponse
 import com.swadratna.swadratna_staff.data.remote.model.AttendanceCheckInRequest
 import com.swadratna.swadratna_staff.data.remote.model.AttendanceCheckOutRequest
 import com.swadratna.swadratna_staff.data.remote.model.AttendanceModifyRequest
+import com.swadratna.swadratna_staff.data.remote.model.CancelKotItemsRequest
 import okhttp3.ResponseBody
 
 data class BillActionRequest(
@@ -92,7 +93,16 @@ interface ApiService {
     suspend fun getOrderDetail(@Path("orderID") orderID: String): Response<OrderDetailsX>
 
     @GET("/api/v1/staff/bill")
-    suspend fun getBillDetails(@Header("X-Key") xKey: String, @Query("orderId") orderId: String): Response<BillDetail>
+    suspend fun getBillDetails(
+        @Header("X-Key") xKey: String,
+        @Query("orderId") orderId: String,
+        @Query("RemoveGST") removeGst: Boolean? = null,
+        @Query("ServiceCharge") serviceCharge: Double? = null,
+        @Query("Tip") tip: Double? = null,
+        @Query("AdditionalStaffDiscount") additionalStaffDiscount: Double? = null,
+        @Query("ApplyCampagin") applyCampaign: Boolean? = null,
+        @Query("promo_code") promoCode: String? = null
+    ): Response<BillDetail>
 
     @GET("/api/v1/staff/bill/{billId}")
     suspend fun getBillDetailsById(@Path("billId") billId: String): Response<BillDetail>
@@ -115,6 +125,13 @@ interface ApiService {
         @Path("kotId") kotId: Int,
         @Body request: KotStatusUpdateRequest
     ): Response<KotStatusUpdateResponse>
+
+    @PATCH("/api/v1/staff/kots/{kotId}/items/cancel")
+    suspend fun cancelKotItems(
+        @Header("X-Key") xKey: String,
+        @Path("kotId") kotId: Int,
+        @Body request: CancelKotItemsRequest
+    ): Response<ResponseBody>
 
 
     @POST("/api/v1/staff/tables/{tableId}/free")

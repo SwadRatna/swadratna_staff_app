@@ -33,6 +33,13 @@ sealed class KotStatusUpdateState {
     data class Error(val message: String) : KotStatusUpdateState()
 }
 
+sealed class KotItemCancellationState {
+    object Idle : KotItemCancellationState()
+    object Loading : KotItemCancellationState()
+    object Success : KotItemCancellationState()
+    data class Error(val message: String) : KotItemCancellationState()
+}
+
 @HiltViewModel
 class KotViewModel @Inject constructor(
     private val kotRepository: KotRepository,
@@ -49,6 +56,9 @@ class KotViewModel @Inject constructor(
 
     private val _kotStatusUpdateState = MutableStateFlow<KotStatusUpdateState>(KotStatusUpdateState.Idle)
     val kotStatusUpdateState: StateFlow<KotStatusUpdateState> = _kotStatusUpdateState.asStateFlow()
+
+    private val _kotItemCancellationState = MutableStateFlow<KotItemCancellationState>(KotItemCancellationState.Idle)
+    val kotItemCancellationState: StateFlow<KotItemCancellationState> = _kotItemCancellationState.asStateFlow()
 
     private val _isRefreshing = MutableStateFlow(false)
     val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
@@ -113,12 +123,30 @@ class KotViewModel @Inject constructor(
         }
     }
 
+    fun cancelKotItem(kotId: Int, itemId: Int) {
+        viewModelScope.launch {
+            _kotItemCancellationState.value = KotItemCancellationState.Loading
+            kotRepository.cancelKotItems(kotId, listOf(itemId))
+                .onSuccess {
+                    _kotItemCancellationState.value = KotItemCancellationState.Success
+                    loadKots() // Also refresh KOT list just in case
+                }
+                .onFailure { error ->
+                    _kotItemCancellationState.value = KotItemCancellationState.Error(error.message ?: "Unknown error")
+                }
+        }
+    }
+
     fun setSelectedKot(kot: KotItemX?) {
         _selectedKot.value = kot
     }
 
     fun resetStatusUpdateState() {
         _kotStatusUpdateState.value = KotStatusUpdateState.Idle
+    }
+
+    fun resetCancellationState() {
+        _kotItemCancellationState.value = KotItemCancellationState.Idle
     }
 
     fun setShowOnlyPending(showOnlyPending: Boolean) {

@@ -36,6 +36,10 @@ import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+import android.media.RingtoneManager
+import android.media.Ringtone
+import android.net.Uri
+
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
@@ -224,6 +228,9 @@ class MainActivity : ComponentActivity() {
     }
     
     private fun showInAppNotificationWithTitle(type: String, orderId: Int, billId: String?, tableNumber: Int, title: String?, body: String?, deepLink: String? = null) {
+        // Play sound for in-app notification
+        playNotificationSound(type)
+
         val notification = com.swadratna.swadratna_staff.ui.components.InAppNotification(
             id = System.currentTimeMillis().toString(),
             title = title ?: when (type) {
@@ -247,6 +254,34 @@ class MainActivity : ComponentActivity() {
         
         notificationManager.showNotification(notification)
         Log.d("MainActivity", "In-app notification shown with custom title: ${notification.title}")
+    }
+
+    private fun playNotificationSound(type: String) {
+        try {
+            val soundUri = when(type) {
+                "new_kot", "new_order" -> {
+                    val resId = resources.getIdentifier("sound_order_alert", "raw", packageName)
+                    if (resId != 0) {
+                        Uri.parse("android.resource://$packageName/$resId")
+                    } else {
+                        RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
+                    }
+                }
+                "approve_bill", "bill_requested", "request_bill" -> {
+                    val resId = resources.getIdentifier("sound_bill_alert", "raw", packageName)
+                    if (resId != 0) {
+                        Uri.parse("android.resource://$packageName/$resId")
+                    } else {
+                        RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+                    }
+                }
+                else -> RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+            }
+            val ringtone = RingtoneManager.getRingtone(applicationContext, soundUri)
+            ringtone.play()
+        } catch (e: Exception) {
+            Log.e("MainActivity", "Error playing notification sound", e)
+        }
     }
 
     private fun handleDeepLinkIntent(intent: Intent?) {

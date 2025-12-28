@@ -10,6 +10,9 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
+import android.media.AudioAttributes
+import android.media.RingtoneManager
+import android.net.Uri
 import androidx.core.net.toUri
 import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.lifecycle.Lifecycle
@@ -20,6 +23,10 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         private const val TAG = "MyFirebaseMessagingService"
         private const val CHANNEL_ID = "swadratna_notifications"
         private const val CHANNEL_NAME = "SwadRatna Notifications"
+        private const val CHANNEL_ID_ORDER = "swadratna_orders"
+        private const val CHANNEL_NAME_ORDER = "SwadRatna Orders"
+        private const val CHANNEL_ID_BILL = "swadratna_bills"
+        private const val CHANNEL_NAME_BILL = "SwadRatna Bills"
         private const val CHANNEL_DESCRIPTION = "Notifications for SwadRatna Staff App"
     }
 
@@ -109,17 +116,73 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
     ) {
         val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                CHANNEL_ID,
-                CHANNEL_NAME,
-                NotificationManager.IMPORTANCE_HIGH
-            ).apply {
-                description = CHANNEL_DESCRIPTION
-                enableLights(true)
-                enableVibration(true)
+        // Determine Channel ID based on type
+        // Use separate channels to support distinct sounds in background
+        val channelId = when(type) {
+            "new_kot", "new_order" -> CHANNEL_ID_ORDER
+            "approve_bill", "bill_requested", "request_bill" -> CHANNEL_ID_BILL
+            else -> CHANNEL_ID
+        }
+        
+        val channelName = when(channelId) {
+            CHANNEL_ID_ORDER -> CHANNEL_NAME_ORDER
+            CHANNEL_ID_BILL -> CHANNEL_NAME_BILL
+            else -> CHANNEL_NAME
+        }
+        
+        // Determine Sound URI
+        // Expecting user to add 'sound_order_alert.mp3' and 'sound_bill_alert.mp3' in res/raw
+        val soundUri = try {
+            when(type) {
+                "new_kot", "new_order" -> {
+                    // Check if custom sound exists, else fallback to Ringtone
+                    val resId = resources.getIdentifier("sound_order_alert", "raw", packageName)
+                    if (resId != 0) {
+                        Uri.parse("android.resource://$packageName/$resId")
+                    } else {
+                        RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
+                    }
+                }
+                "approve_bill", "bill_requested", "request_bill" -> {
+                    val resId = resources.getIdentifier("sound_bill_alert", "raw", packageName)
+                    if (resId != 0) {
+                        Uri.parse("android.resource://$packageName/$resId")
+                    } else {
+                        RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+                    }
+                }
+                else -> RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
             }
-            notificationManager.createNotificationChannel(channel)
+        } catch (e: Exception) {
+            // Fallback safety
+            RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            // Check if channel exists before creating/recreating to avoid unnecessary overhead
+            // Note: Once created, sound cannot be changed without deleting the channel or reinstalling app
+            // If you change the sound file, you might need to change channel ID or uninstall app
+            
+            val existingChannel = notificationManager.getNotificationChannel(channelId)
+            if (existingChannel == null) {
+                val importance = NotificationManager.IMPORTANCE_HIGH
+                val channel = NotificationChannel(
+                    channelId,
+                    channelName,
+                    importance
+                ).apply {
+                    description = CHANNEL_DESCRIPTION
+                    enableLights(true)
+                    enableVibration(true)
+                    
+                    val audioAttributes = AudioAttributes.Builder()
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                        .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+                        .build()
+                    setSound(soundUri, audioAttributes)
+                }
+                notificationManager.createNotificationChannel(channel)
+            }
         }
 
         val intent = Intent(this, MainActivity::class.java).apply {
@@ -129,12 +192,11 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
             putExtra("table_number", tableNumber?.toIntOrNull() ?: -1)
             
             // Add other data that might be needed
-            if (type == "approve_bill" && deepLink != null) {
+            if ((type == "approve_bill" || type == "bill_requested") && deepLink != null) {
                  val uri = deepLink.toUri()
-                 val billId = uri.getQueryParameter("billId")
-                 putExtra("bill_id", billId)
+                 val billIdParam = uri.getQueryParameter("billId")
+                 putExtra("bill_id", billIdParam)
             }
-
 
             if (type == "new_order" || type == "payment_completed") {
                 val deepLinkUri = if(deepLink != null) {
@@ -153,7 +215,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val notificationBuilder = NotificationCompat.Builder(this, CHANNEL_ID)
+        val notificationBuilder = NotificationCompat.Builder(this, channelId)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(title)
             .setContentText(body)
@@ -161,11 +223,12 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
             .setAutoCancel(true)
             .setContentIntent(pendingIntent)
             .setVibrate(longArrayOf(0, 250, 250, 250))
+            .setSound(soundUri)
             .setWhen(System.currentTimeMillis())
             .setShowWhen(true)
         
         if (priority == "high") {
-            notificationBuilder.setDefaults(NotificationCompat.DEFAULT_SOUND or NotificationCompat.DEFAULT_VIBRATE)
+            notificationBuilder.setDefaults(NotificationCompat.DEFAULT_VIBRATE)
         }
 
         val notificationId = System.currentTimeMillis().toInt()

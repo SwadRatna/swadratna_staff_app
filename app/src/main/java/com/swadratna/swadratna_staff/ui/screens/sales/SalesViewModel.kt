@@ -3,6 +3,8 @@ package com.swadratna.swadratna_staff.ui.screens.sales
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.swadratna.swadratna_staff.data.remote.model.SalesResponse
+import com.swadratna.swadratna_staff.data.remote.model.SalesSummary
+import com.swadratna.swadratna_staff.data.remote.model.SaleTransaction
 import com.swadratna.swadratna_staff.data.remote.repositories.SalesRepository
 import com.swadratna.swadratna_staff.utils.permissions.PermissionManager
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -17,7 +19,13 @@ import javax.inject.Inject
 
 sealed class SalesUiState {
     object Loading : SalesUiState()
-    data class Success(val data: SalesResponse) : SalesUiState()
+    data class Success(
+        val sales: List<SaleTransaction>,
+        val summary: SalesSummary,
+        val totalCount: Int,
+        val isLoadingMore: Boolean = false,
+        val endReached: Boolean = false
+    ) : SalesUiState()
     data class Error(val message: String) : SalesUiState()
 }
 
@@ -49,14 +57,30 @@ class SalesViewModel @Inject constructor(
     
     // Pagination
     private val _currentPage = MutableStateFlow(1)
+    private var currentSalesList = mutableListOf<SaleTransaction>()
     
     init {
-        fetchSales()
+        fetchSales(isRefresh = true)
     }
 
-    fun fetchSales() {
+    fun fetchSales(isRefresh: Boolean = false, isLoadMore: Boolean = false) {
         viewModelScope.launch {
-            _uiState.value = SalesUiState.Loading
+            if (isRefresh) {
+                _currentPage.value = 1
+                currentSalesList.clear()
+                _uiState.value = SalesUiState.Loading
+            } else if (isLoadMore) {
+                if (_uiState.value is SalesUiState.Success) {
+                    val currentState = _uiState.value as SalesUiState.Success
+                    if (currentState.isLoadingMore || currentState.endReached) return@launch
+                    _uiState.value = currentState.copy(isLoadingMore = true)
+                }
+            } else {
+                // Filter change case, treat as refresh
+                _currentPage.value = 1
+                currentSalesList.clear()
+                _uiState.value = SalesUiState.Loading
+            }
             
             val date = _selectedDate.value
             val from = _fromDate.value
@@ -70,40 +94,67 @@ class SalesViewModel @Inject constructor(
                 toDate = to,
                 orderType = type,
                 page = page,
-                limit = 50 // Default limit
-            ).onSuccess {
-                _uiState.value = SalesUiState.Success(it)
+                limit = 20 // Using 20 as per user response example
+            ).onSuccess { response ->
+                val newSales = response.sales
+                currentSalesList.addAll(newSales)
+                
+                val hasNext = response.pagination.hasNext
+                val totalCount = response.pagination.totalCount
+                
+                if (hasNext) {
+                    _currentPage.value += 1
+                }
+                
+                _uiState.value = SalesUiState.Success(
+                    sales = currentSalesList.toList(),
+                    summary = response.summary,
+                    totalCount = totalCount,
+                    isLoadingMore = false,
+                    endReached = !hasNext
+                )
             }.onFailure {
-                _uiState.value = SalesUiState.Error(it.message ?: "Unknown error")
+                if (isLoadMore && _uiState.value is SalesUiState.Success) {
+                    val currentState = _uiState.value as SalesUiState.Success
+                    _uiState.value = currentState.copy(isLoadingMore = false)
+                    // Optionally handle error toast here
+                } else {
+                    _uiState.value = SalesUiState.Error(it.message ?: "Unknown error")
+                }
             }
         }
+    }
+
+    fun loadMore() {
+        fetchSales(isLoadMore = true)
     }
 
     fun setDateFilter(date: String?) {
         _selectedDate.value = date
         _fromDate.value = null
         _toDate.value = null
-        fetchSales()
+        fetchSales(isRefresh = true)
     }
 
     fun setDateRangeFilter(from: String, to: String) {
         _selectedDate.value = null
         _fromDate.value = from
         _toDate.value = to
-        fetchSales()
+        fetchSales(isRefresh = true)
     }
 
     fun setFromDate(date: String) {
         _fromDate.value = date
         _selectedDate.value = null
-        fetchSales()
+        fetchSales(isRefresh = true)
     }
 
     fun setToDate(date: String) {
         _toDate.value = date
         _selectedDate.value = null
-        fetchSales()
+        fetchSales(isRefresh = true)
     }
+
 
     fun setYesterdayFilter() {
         val cal = java.util.Calendar.getInstance()
@@ -156,15 +207,15 @@ class SalesViewModel @Inject constructor(
         _selectedDate.value = null
         _fromDate.value = null
         _toDate.value = null
-        fetchSales()
+        fetchSales(isRefresh = true)
     }
 
     fun setOrderTypeFilter(type: String?) {
         _orderType.value = type
-        fetchSales()
+        fetchSales(isRefresh = true)
     }
     
     fun refresh() {
-        fetchSales()
+        fetchSales(isRefresh = true)
     }
 }

@@ -12,11 +12,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -39,6 +41,7 @@ import com.swadratna.swadratna_staff.data.remote.model.OrderDetailsX
 import com.swadratna.swadratna_staff.data.remote.model.OrderXX
 import com.swadratna.swadratna_staff.navigation.NavigationRoute
 import com.swadratna.swadratna_staff.ui.components.NetworkTopSnackbarHost
+import com.swadratna.swadratna_staff.ui.screens.kot.KotItemCancellationState
 import com.swadratna.swadratna_staff.ui.screens.kot.KotStatusUpdateState
 import com.swadratna.swadratna_staff.ui.screens.kot.KotViewModel
 import com.swadratna.swadratna_staff.utils.BillPrinterUtil
@@ -47,6 +50,13 @@ import java.text.NumberFormat
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -59,6 +69,7 @@ fun OrdersScreen(
 ) {
     val orderDetailsXState by viewModel.detailedOrderState.collectAsStateWithLifecycle()
     val kotStatusUpdateState by kotViewModel.kotStatusUpdateState.collectAsStateWithLifecycle()
+    val kotItemCancellationState by kotViewModel.kotItemCancellationState.collectAsStateWithLifecycle()
     val isOnline by viewModel.isOnline.collectAsStateWithLifecycle()
 
     LaunchedEffect(orderID) {
@@ -71,6 +82,13 @@ fun OrdersScreen(
         if (kotStatusUpdateState is KotStatusUpdateState.Success) {
             orderID?.let { viewModel.getOrderDetail(it) }
             kotViewModel.resetStatusUpdateState()
+        }
+    }
+
+    LaunchedEffect(kotItemCancellationState) {
+        if (kotItemCancellationState is KotItemCancellationState.Success) {
+            orderID?.let { viewModel.getOrderDetail(it) }
+            kotViewModel.resetCancellationState()
         }
     }
 
@@ -105,11 +123,10 @@ fun OrdersScreen(
                                         )
                                     )
                                 } else {
-                                    navController.navigate(
-                                        NavigationRoute.Bill.createRoute(
-                                            orderID ?: ""
-                                        )
-                                    )
+                                    // If bill not generated, navigate with orderID to generate default bill
+                                    if (orderID != null) {
+                                        navController.navigate(NavigationRoute.Bill.createRoute(orderID))
+                                    }
                                 }
                             },
                             enabled = true,
@@ -163,6 +180,9 @@ fun OrdersScreen(
                         modifier = Modifier.fillMaxSize(),
                         onUpdateKotStatus = { kotId, status ->
                             kotViewModel.updateKotStatus(kotId, status)
+                        },
+                        onCancelKotItem = { kotId, itemId ->
+                            kotViewModel.cancelKotItem(kotId, itemId)
                         }
                     )
                     NetworkTopSnackbarHost(
@@ -220,7 +240,8 @@ fun OrdersScreen(
 fun SuccessLayout(
     orderDetails: OrderDetailsX,
     modifier: Modifier,
-    onUpdateKotStatus: (Int, String) -> Unit
+    onUpdateKotStatus: (Int, String) -> Unit,
+    onCancelKotItem: (Int, Int) -> Unit
 ) {
     LazyColumn(
         modifier = modifier.padding(horizontal = 16.dp),
@@ -265,7 +286,10 @@ fun SuccessLayout(
                     kot = kot,
                     tableLabel = orderDetails.table.table_id,
                     customerName = orderDetails.user?.name ?: "Guest",
-                    onUpdateStatus = onUpdateKotStatus
+                    onUpdateStatus = onUpdateKotStatus,
+                    onCancelItem = { itemId ->
+                        onCancelKotItem(kot.id, itemId)
+                    }
                 )
             }
         }
@@ -455,33 +479,6 @@ fun CustomerTableCard(orderDetails: OrderDetailsX) {
 //                        color = MaterialTheme.colorScheme.onSurfaceVariant
 //                    )
 //                    Text(
-//                        text = "₹${order.order_value}",
-//                        style = MaterialTheme.typography.bodyLarge,
-//                        fontWeight = FontWeight.SemiBold
-//                    )
-//                }
-//                if (order.discount > 0) {
-//                    Column(horizontalAlignment = Alignment.End) {
-//                        Text(
-//                            text = "Discount",
-//                            style = MaterialTheme.typography.bodySmall,
-//                            color = MaterialTheme.colorScheme.error
-//                        )
-//                        Text(
-//                            text = "-₹${order.discount}",
-//                            style = MaterialTheme.typography.bodyLarge,
-//                            fontWeight = FontWeight.SemiBold,
-//                            color = MaterialTheme.colorScheme.error
-//                        )
-//                    }
-//                }
-//                Column(horizontalAlignment = Alignment.End) {
-//                    Text(
-//                        text = "Total",
-//                        style = MaterialTheme.typography.bodySmall,
-//                        color = MaterialTheme.colorScheme.onSurfaceVariant
-//                    )
-//                    Text(
 //                        text = "₹${order.total_value}",
 //                        style = MaterialTheme.typography.titleMedium,
 //                        fontWeight = FontWeight.Bold,
@@ -498,10 +495,13 @@ fun KotCard(
     kot: KotX,
     tableLabel: String?,
     customerName: String?,
-    onUpdateStatus: (Int, String) -> Unit
+    onUpdateStatus: (Int, String) -> Unit,
+    onCancelItem: (Int) -> Unit
 ) {
     val context = LocalContext.current
     var showStatusDialog by remember { mutableStateOf(false) }
+
+    val isKotCancelled = kot.status.equals("cancelled", ignoreCase = true)
 
     val performPrint = rememberBluetoothPermissionLauncher {
         val kotItems = kot.items?.map {
@@ -550,7 +550,9 @@ fun KotCard(
 
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(MaterialTheme.colorScheme.surface),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isKotCancelled) MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.1f) else MaterialTheme.colorScheme.surface
+        ),
         elevation = CardDefaults.cardElevation(2.dp),
         shape = RoundedCornerShape(12.dp)
     ) {
@@ -568,33 +570,52 @@ fun KotCard(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
                             text = "KOT #${kot.kot_number}",
-                            style = MaterialTheme.typography.titleMedium,
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                textDecoration = if (isKotCancelled) androidx.compose.ui.text.style.TextDecoration.LineThrough else null
+                            ),
                             fontWeight = FontWeight.Bold
                         )
                         Spacer(modifier = Modifier.width(12.dp))
-                        Surface(
-                            shape = RoundedCornerShape(4.dp),
-                            color = getStatusColor(kot.status).copy(alpha = 0.1f),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, getStatusColor(kot.status).copy(alpha = 0.5f)),
-                            modifier = Modifier.clickable { showStatusDialog = true }
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-                                verticalAlignment = Alignment.CenterVertically
+                        
+                        if (isKotCancelled) {
+                            Surface(
+                                shape = RoundedCornerShape(4.dp),
+                                color = MaterialTheme.colorScheme.error.copy(alpha = 0.1f),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f))
                             ) {
                                 Text(
-                                    text = kot.status.uppercase(),
+                                    text = "CANCELLED",
                                     style = MaterialTheme.typography.labelSmall,
                                     fontWeight = FontWeight.Bold,
-                                    color = getStatusColor(kot.status)
+                                    color = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
                                 )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Icon(
-                                    Icons.Default.Edit,
-                                    contentDescription = "Edit",
-                                    modifier = Modifier.size(10.dp),
-                                    tint = getStatusColor(kot.status)
-                                )
+                            }
+                        } else {
+                            Surface(
+                                shape = RoundedCornerShape(4.dp),
+                                color = getStatusColor(kot.status).copy(alpha = 0.1f),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, getStatusColor(kot.status).copy(alpha = 0.5f)),
+                                modifier = Modifier.clickable { showStatusDialog = true }
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = kot.status.uppercase(),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = getStatusColor(kot.status)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Icon(
+                                        Icons.Default.Edit,
+                                        contentDescription = "Edit",
+                                        modifier = Modifier.size(10.dp),
+                                        tint = getStatusColor(kot.status)
+                                    )
+                                }
                             }
                         }
                     }
@@ -633,6 +654,8 @@ fun KotCard(
             // Items
             Column(modifier = Modifier.padding(16.dp)) {
                 kot.items.orEmpty().forEachIndexed { index, kotItem ->
+                    val isItemCancelled = kotItem.status.equals("cancelled", ignoreCase = true) || isKotCancelled
+
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.Top
@@ -648,12 +671,25 @@ fun KotCard(
                         // Details
                         Column(modifier = Modifier.weight(1f)) {
                             val itemName = kotItem.menu_item?.name ?: "Unknown Item"
-                            Text(
-                                text = itemName,
-                                style = MaterialTheme.typography.bodyLarge,
-                                fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = itemName,
+                                    style = MaterialTheme.typography.bodyLarge.copy(
+                                        textDecoration = if (isItemCancelled) androidx.compose.ui.text.style.TextDecoration.LineThrough else null
+                                    ),
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = if (isItemCancelled) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f) else MaterialTheme.colorScheme.onSurface
+                                )
+                                if (isItemCancelled) {
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = "(Cancelled)",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.error,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
+                            }
                             if (!kotItem.menu_item?.description.isNullOrEmpty()) {
                                 Text(
                                     text = kotItem.menu_item?.description ?: "",
@@ -681,16 +717,37 @@ fun KotCard(
                         Column(horizontalAlignment = Alignment.End) {
                             Text(
                                 text = "x${kotItem.quantity ?: 0}",
-                                style = MaterialTheme.typography.titleMedium,
+                                style = MaterialTheme.typography.titleMedium.copy(
+                                    textDecoration = if (isItemCancelled) androidx.compose.ui.text.style.TextDecoration.LineThrough else null
+                                ),
                                 fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary
+                                color = if (isItemCancelled) MaterialTheme.colorScheme.primary.copy(alpha = 0.6f) else MaterialTheme.colorScheme.primary
                             )
                             Text(
                                 text = "₹${(kotItem.total_price ?: 0.0).toInt()}",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurface,
+                                style = MaterialTheme.typography.bodyMedium.copy(
+                                    textDecoration = if (isItemCancelled) androidx.compose.ui.text.style.TextDecoration.LineThrough else null
+                                ),
+                                color = if (isItemCancelled) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f) else MaterialTheme.colorScheme.onSurface,
                                 fontWeight = FontWeight.Medium
                             )
+                        }
+
+                        if (!isItemCancelled && !isKotCancelled) {
+                            Spacer(modifier = Modifier.width(8.dp))
+
+                            // Delete Icon
+                            IconButton(
+                                onClick = { onCancelItem(kotItem.id) },
+                                modifier = Modifier.size(24.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Delete,
+                                    contentDescription = "Delete Item",
+                                    tint = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
                         }
                     }
                     
@@ -789,19 +846,24 @@ fun getStatusColor(status: String): Color {
 }
 
 private fun formatDate(dateString: String): String {
-    return try {
-        val inputFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault())
-        val date = inputFormat.parse(dateString)
-        val outputFormat = SimpleDateFormat("dd MMM, hh:mm a", Locale.getDefault())
-        outputFormat.format(date ?: Date())
-    } catch (e: Exception) {
+    val formats = listOf(
+        "yyyy-MM-dd'T'HH:mm:ss.SSSXXX", // Handles ISO 8601 with timezone like +05:30
+        "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", // Handles literal Z
+        "yyyy-MM-dd'T'HH:mm:ss'Z'",      // Handles literal Z without millis
+        "yyyy-MM-dd'T'HH:mm:ss"          // Fallback
+    )
+
+    for (format in formats) {
         try {
-            val inputFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.getDefault())
+            val inputFormat = SimpleDateFormat(format, Locale.getDefault())
             val date = inputFormat.parse(dateString)
-            val outputFormat = SimpleDateFormat("dd MMM, hh:mm a", Locale.getDefault())
-            outputFormat.format(date ?: Date())
-        } catch (e2: Exception) {
-            dateString
+            if (date != null) {
+                val outputFormat = SimpleDateFormat("dd MMM, hh:mm a", Locale.getDefault())
+                return outputFormat.format(date)
+            }
+        } catch (e: Exception) {
+            continue
         }
     }
+    return dateString
 }

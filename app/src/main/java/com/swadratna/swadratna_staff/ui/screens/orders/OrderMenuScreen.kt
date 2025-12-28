@@ -43,6 +43,8 @@ import androidx.navigation.NavController
 import android.widget.Toast
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.res.painterResource
+import com.swadratna.swadratna_staff.R
 import com.swadratna.swadratna_staff.data.remote.model.Category
 import com.swadratna.swadratna_staff.data.remote.model.MenuItem
 import com.swadratna.swadratna_staff.navigation.NavigationRoute
@@ -500,7 +502,7 @@ fun OrderSummaryDialog(
                                         modifier = Modifier.size(24.dp)
                                     ) {
                                         Icon(
-                                            imageVector = Icons.Default.Close,
+                                            painter = painterResource(R.drawable.ic_remove),
                                             contentDescription = "Decrease",
                                             modifier = Modifier.size(16.dp)
                                         )

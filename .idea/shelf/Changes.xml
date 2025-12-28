@@ -1,0 +1,12 @@
+<changelist name="Changes" date="1766832986800" recycled="false">
+  <option name="PATH" value="$PROJECT_DIR$/.idea/shelf/Changes/shelved.patch" />
+  <option name="DESCRIPTION" value="Changes" />
+  <binary>
+    <option name="AFTER_PATH" value="app/src/main/res/raw/sound_bill_alert.wav" />
+    <option name="SHELVED_PATH" value="$PROJECT_DIR$/.idea/shelf/Changes/sound_bill_alert.wav" />
+  </binary>
+  <binary>
+    <option name="AFTER_PATH" value="app/src/main/res/raw/sound_order_alert.wav" />
+    <option name="SHELVED_PATH" value="$PROJECT_DIR$/.idea/shelf/Changes/sound_order_alert.wav" />
+  </binary>
+</changelist>

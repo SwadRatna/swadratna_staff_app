@@ -183,12 +183,29 @@ class OrderManagementRepository @Inject constructor(
         }
     }
 
-    suspend fun getBillDetails(orderId: String): Result<BillDetail> {
+    suspend fun getBillDetails(
+        orderId: String,
+        removeGst: Boolean? = null,
+        serviceCharge: Double? = null,
+        tip: Double? = null,
+        additionalStaffDiscount: Double? = null,
+        applyCampaign: Boolean? = null,
+        promoCode: String? = null
+    ): Result<BillDetail> {
         if (!networkMonitor.isOnline.value) {
             return Result.failure(Exception("No network connection"))
         }
         return try {
-            val response = apiService.getBillDetails("RMWvXbJYiKDtjtCEj03iGP", orderId)
+            val response = apiService.getBillDetails(
+                "RMWvXbJYiKDtjtCEj03iGP",
+                orderId,
+                removeGst,
+                serviceCharge,
+                tip,
+                additionalStaffDiscount,
+                applyCampaign,
+                promoCode
+            )
             if (response.isSuccessful) {
                 response.body()?.let {
                     Result.success(it)

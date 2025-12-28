@@ -16,6 +16,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -98,6 +99,9 @@ fun PayBillScreen(
     var transactionId by remember { mutableStateOf("") }
     var paymentNotes by remember { mutableStateOf("") }
     var amountPaidInput by remember { mutableStateOf("") }
+    
+    // Regenerate Dialog State
+    var showRegenerateDialog by remember { mutableStateOf(false) }
 
     // Post Payment Dialog State
     var showPostPaymentDialog by remember { mutableStateOf(false) }
@@ -245,6 +249,12 @@ fun PayBillScreen(
                     }
                 },
                 actions = {
+                    IconButton(onClick = { showRegenerateDialog = true }, enabled = billDetail != null) {
+                        Icon(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = "Regenerate Bill"
+                        )
+                    }
                     IconButton(onClick = { performPrint() }, enabled = billDetail != null) {
                         Text("🖨️", fontSize = 20.sp)
                     }
@@ -582,6 +592,25 @@ fun PayBillScreen(
                 modifier = Modifier.align(Alignment.TopCenter).padding(8.dp)
             )
         }
+    }
+
+    // Regenerate Bill Dialog
+    if (showRegenerateDialog && activeOrderId != null) {
+        BillOptionsDialog(
+            onDismiss = { showRegenerateDialog = false },
+            onRegenerate = { removeGst, serviceCharge, tip, discount, applyCampaign, promoCode ->
+                viewModel.getBillDetails(
+                    orderId = activeOrderId,
+                    removeGst = removeGst,
+                    serviceCharge = serviceCharge,
+                    tip = tip,
+                    additionalStaffDiscount = discount,
+                    applyCampaign = applyCampaign,
+                    promoCode = promoCode
+                )
+                showRegenerateDialog = false
+            }
+        )
     }
 
     // Payment Dialog

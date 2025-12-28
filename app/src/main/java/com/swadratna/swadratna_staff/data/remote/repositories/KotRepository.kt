@@ -1,5 +1,6 @@
 package com.swadratna.swadratna_staff.data.remote.repositories
 
+import com.swadratna.swadratna_staff.data.remote.model.CancelKotItemsRequest
 import com.swadratna.swadratna_staff.data.remote.model.KotListResponse
 import com.swadratna.swadratna_staff.data.remote.model.KotStatusUpdateRequest
 import com.swadratna.swadratna_staff.data.remote.model.KotStatusUpdateResponse
@@ -57,6 +58,26 @@ class KotRepository @Inject constructor(
             Result.failure(Exception("HTTP error while updating KOT status: ${e.message()}", e))
         } catch (e: Exception) {
             Result.failure(Exception("An unexpected error occurred during KOT status update.", e))
+        }
+    }
+
+    suspend fun cancelKotItems(kotId: Int, itemIds: List<Int>): Result<Boolean> {
+        if (!networkMonitor.isOnline.value) {
+            return Result.failure(Exception("No network connection"))
+        }
+        return try {
+            val response = apiService.cancelKotItems(
+                "RMWvXbJYiKDtjtCEj03iGP",
+                kotId,
+                CancelKotItemsRequest(itemIds)
+            )
+            if (response.isSuccessful) {
+                Result.success(true)
+            } else {
+                Result.failure(Exception("Failed to cancel items: ${response.message()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
         }
     }
 }

@@ -335,12 +335,28 @@ class OrderManagementViewModel @Inject constructor(
         _detailedOrderState.value = OrderDetailsXState.Idle
     }
 
-    fun getBillDetails(orderId: String) {
+    fun getBillDetails(
+        orderId: String,
+        removeGst: Boolean? = null,
+        serviceCharge: Double? = null,
+        tip: Double? = null,
+        additionalStaffDiscount: Double? = null,
+        applyCampaign: Boolean? = null,
+        promoCode: String? = null
+    ) {
         viewModelScope.launch {
             if (_billDetailsState.value !is BillDetailsState.Success) {
                 _billDetailsState.value = BillDetailsState.Loading
             }
-            repository.getBillDetails(orderId)
+            repository.getBillDetails(
+                orderId,
+                removeGst,
+                serviceCharge,
+                tip,
+                additionalStaffDiscount,
+                applyCampaign,
+                promoCode
+            )
                 .onSuccess {
                     _billDetailsState.value = BillDetailsState.Success(it)
                 }

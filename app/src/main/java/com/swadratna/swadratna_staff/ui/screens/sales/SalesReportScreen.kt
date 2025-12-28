@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -30,8 +31,6 @@ import java.util.*
 import com.swadratna.swadratna_staff.ui.components.NetworkTopSnackbarHost
 
 import com.swadratna.swadratna_staff.ui.components.SwipeRefreshContainer
-
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SalesReportScreen(
     navController: NavController,
@@ -44,6 +43,7 @@ fun SalesReportScreen(
     val isOnline by viewModel.isOnline.collectAsState()
 
     val context = LocalContext.current
+    val listState = rememberLazyListState()
     
     LaunchedEffect(isOnline) {
         if (isOnline) {
@@ -263,103 +263,73 @@ fun SalesReportScreen(
                     )
                 }
                 is SalesUiState.Success -> {
-                    Row(
+                    Card(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(60.dp)
-                            .padding(horizontal = 8.dp)
+                            .height(45.dp)
+                            .padding(horizontal = 8.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color.White),
+                        shape = RoundedCornerShape(4.dp),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color.LightGray)
                     ) {
-                        // Amount Card
-                        Card(
-                            modifier = Modifier
-                                .weight(1.2f)
-                                .padding(end = 4.dp),
-                            colors = CardDefaults.cardColors(containerColor = Color.White),
-                            shape = RoundedCornerShape(4.dp),
-                             border = androidx.compose.foundation.BorderStroke(1.dp, Color.LightGray)
-                        ) {
-                            Column(modifier = Modifier.padding(8.dp)) {
-                                Text("Amount", fontSize = 12.sp, color = Color.Gray)
-                                Text(
-                                    "₹${state.data.summary.totalAmount}",
-                                    fontSize = 18.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                // Green bar at bottom
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(4.dp)
-                                        .background(Color.Green)
+                        Row(modifier = Modifier.fillMaxWidth().padding(8.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween)
+                        {
+                            Text("Total Sales", fontSize = 16.sp, color = Color.Gray)
+//                                Spacer(Modifier.width(10.dp))
+                            Text(
+                                "₹${state.summary.totalAmount}",
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+
+                    // List
+                    LazyColumn(
+                        state = listState,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(top = 8.dp),
+                        contentPadding = PaddingValues(bottom = 16.dp)
+                    ) {
+                        items(state.sales) { sale ->
+                            SaleItemCard(sale) {
+                                navController.navigate(
+                                    com.swadratna.swadratna_staff.navigation.NavigationRoute.Bill.createRoute(
+                                        billId = sale.id.toString()
+                                    )
                                 )
                             }
                         }
-
-                        // Count Card
-                        Card(
-                            modifier = Modifier
-                                .weight(0.8f)
-                                .padding(start = 4.dp),
-                            colors = CardDefaults.cardColors(containerColor = Color.White),
-                            shape = RoundedCornerShape(4.dp),
-                             border = androidx.compose.foundation.BorderStroke(1.dp, Color.LightGray)
-                        ) {
-                            Row(modifier = Modifier.fillMaxWidth()) {
-                                Column(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .padding(8.dp)
-                                ) {
-                                    Text("Count", fontSize = 12.sp, color = Color.Gray)
-                                    Text(
-                                        "${state.data.summary.count}",
-                                        fontSize = 18.sp,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                     Spacer(modifier = Modifier.height(4.dp))
-                                     Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(4.dp)
-                                        .background(Color.Blue)
-                                )
-                                }
-                                // Filter Icon/Button placeholder
+                        
+                        if (state.isLoadingMore) {
+                            item {
                                 Box(
                                     modifier = Modifier
-                                        .width(40.dp)
-                                        .fillMaxHeight()
-                                        .clickable { /* Filter */ },
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    Icon(
-                                        painter = androidx.compose.ui.res.painterResource(id = com.swadratna.swadratna_staff.R.drawable.ic_filter), // Make sure this exists or use vector
-                                        contentDescription = "Filter",
-                                        tint = Color.Gray
-                                    )
+                                    CircularProgressIndicator(modifier = Modifier.size(24.dp))
                                 }
                             }
                         }
                     }
 
-                    // List
-                    state?.data?.sales?.let {
-                        LazyColumn(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(top = 8.dp),
-                            contentPadding = PaddingValues(bottom = 16.dp)
-                        ) {
-                            items(it) { sale ->
-                                SaleItemCard(sale) {
-                                    navController.navigate(
-                                        com.swadratna.swadratna_staff.navigation.NavigationRoute.Bill.createRoute(
-                                            billId = sale.id.toString()
-                                        )
-                                    )
-                                }
-                            }
+                    // Infinite scroll trigger
+                    val shouldLoadMore = remember {
+                        derivedStateOf {
+                            val layoutInfo = listState.layoutInfo
+                            val totalItemsNumber = layoutInfo.totalItemsCount
+                            val lastVisibleItemIndex = (layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0) + 1
+                            totalItemsNumber > 0 && lastVisibleItemIndex >= (totalItemsNumber - 2)
+                        }
+                    }
+
+                    LaunchedEffect(shouldLoadMore.value) {
+                        if (shouldLoadMore.value && !state.isLoadingMore && !state.endReached) {
+                            viewModel.loadMore()
                         }
                     }
 
@@ -483,17 +453,20 @@ fun SaleStatusChip(status: String) {
 
 private fun formatDate(timestamp: String): String {
     return try {
-        val inputFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault())
-        inputFormat.timeZone = TimeZone.getTimeZone("UTC")
+        // Try parsing with timezone offset (ISO 8601)
+        val inputFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSXXX", Locale.getDefault())
         val date = inputFormat.parse(timestamp)
         
-        val outputFormat = SimpleDateFormat("MMM dd, HH:mm", Locale.getDefault())
+        val outputFormat = SimpleDateFormat("dd MMM, hh:mm a", Locale.getDefault())
         outputFormat.format(date)
     } catch (e: Exception) {
-        // Fallback for different format or error
         try {
-             // Try another common format just in case, or just return original
-             timestamp
+            // Fallback for older format if any
+            val inputFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault())
+            inputFormat.timeZone = TimeZone.getTimeZone("UTC")
+            val date = inputFormat.parse(timestamp)
+            val outputFormat = SimpleDateFormat("dd MMM, hh:mm a", Locale.getDefault())
+            outputFormat.format(date)
         } catch (e2: Exception) {
             timestamp
         }
