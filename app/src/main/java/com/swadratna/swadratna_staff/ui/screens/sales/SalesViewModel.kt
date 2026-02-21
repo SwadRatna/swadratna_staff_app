@@ -96,7 +96,7 @@ class SalesViewModel @Inject constructor(
                 page = page,
                 limit = 20 // Using 20 as per user response example
             ).onSuccess { response ->
-                val newSales = response.sales
+                val newSales = response.sales ?: emptyList()
                 currentSalesList.addAll(newSales)
                 
                 val hasNext = response.pagination.hasNext

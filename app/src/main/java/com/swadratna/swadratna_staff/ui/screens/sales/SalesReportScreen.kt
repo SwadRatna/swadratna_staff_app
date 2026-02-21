@@ -29,7 +29,7 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 import com.swadratna.swadratna_staff.ui.components.NetworkTopSnackbarHost
-
+import com.swadratna.swadratna_staff.utils.CurrencyUtils
 import com.swadratna.swadratna_staff.ui.components.SwipeRefreshContainer
 @Composable
 fun SalesReportScreen(
@@ -278,7 +278,7 @@ fun SalesReportScreen(
                             Text("Total Sales", fontSize = 16.sp, color = Color.Gray)
 //                                Spacer(Modifier.width(10.dp))
                             Text(
-                                "₹${state.summary.totalAmount}",
+                                CurrencyUtils.formatPrice(state.summary.totalAmount),
                                 fontSize = 18.sp,
                                 fontWeight = FontWeight.Bold
                             )
@@ -395,7 +395,7 @@ fun SaleItemCard(sale: SaleTransaction, onClick: () -> Unit) {
 
             // Amount
             Text(
-                text = "₹${sale.amount}",
+                text = CurrencyUtils.formatPrice(sale.amount),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary

@@ -6,7 +6,7 @@ data class BillLineItem(
     val id: Int,
     val instructions: String?,
     @SerializedName("kot_id") val kotId: Int,
-    @SerializedName("menu_item") val menuItem: BillMenuItem,
+    @SerializedName("menu_item") val menuItem: BillMenuItem?,
     @SerializedName("menu_item_id") val menuItemId: Int,
     val price: Double,
     val quantity: Int,

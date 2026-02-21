@@ -32,7 +32,7 @@ data class MenuItem(
     val description: String,
     val price: Double,
     @SerializedName("discount_percentage") val discountPercentage: Double,
-    @SerializedName("discounted_price") val discountedPrice: Double, // Use Double since it's 151.2
+    @SerializedName("discounted_price") val discountedPrice: Double?, // Use Double since it's 151.2
     val currency: String,
     val image: String,
     @SerializedName("is_vegetarian") val isVegetarian: Boolean,

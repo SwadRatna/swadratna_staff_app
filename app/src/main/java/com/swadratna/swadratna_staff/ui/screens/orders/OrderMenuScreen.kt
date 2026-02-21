@@ -33,6 +33,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -53,6 +54,7 @@ import com.swadratna.swadratna_staff.ui.components.SearchBar
 import com.swadratna.swadratna_staff.ui.components.SlideToConfirm
 import com.swadratna.swadratna_staff.ui.theme.Red80
 import com.swadratna.swadratna_staff.utils.BillPrinterUtil
+import com.swadratna.swadratna_staff.utils.CurrencyUtils
 import com.swadratna.swadratna_staff.ui.components.NetworkTopSnackbarHost
 import kotlin.collections.component1
 import kotlin.collections.component2
@@ -111,7 +113,22 @@ fun OrderMenuScreen(
         }
     }
 
+    // Create a map of all menu items for efficient lookup and total calculation
+    val allMenuItems = remember(menuItemsMap) {
+        menuItemsMap.values.flatten().associateBy { it.id }
+    }
+
     val totalItemsInOrder = currentOrderItems.values.sum()
+
+    // Calculate total price using discounted prices
+    val orderTotalPrice = remember(currentOrderItems, allMenuItems) {
+        currentOrderItems.entries.sumOf { (itemId, quantity) ->
+            val menuItem = allMenuItems[itemId]
+            val discount = menuItem?.discountedPrice ?: 0.0
+            val price = if (discount > 0 && discount < (menuItem?.price ?: 0.0)) discount else menuItem?.price ?: 0.0
+            price * quantity
+        }
+    }
 
     Box(modifier = modifier) {
         Column(
@@ -165,7 +182,8 @@ fun OrderMenuScreen(
                 orderId = orderId,
                 tableNumber = tableNumber,
                 currentOrderItems = currentOrderItems,
-                menuItemsMap = menuItemsMap,
+                allMenuItems = allMenuItems,
+                totalPrice = orderTotalPrice,
                 orderConfirmationState = orderConfirmationState,
                 onConfirmOrder = { viewModel.confirmOrder(orderId.toInt()) },
                 onDismiss = {
@@ -178,7 +196,7 @@ fun OrderMenuScreen(
         if (showExpandedOrderSummary) {
             OrderSummaryDialog(
                 currentOrderItems = currentOrderItems,
-                menuItems = menuItemsMap.values.flatten(), // Use all available menu items instead of filtered ones
+                allMenuItems = allMenuItems,
                 onDismiss = { showExpandedOrderSummary = false },
                 onOrderClick = { 
                     showExpandedOrderSummary = false
@@ -195,10 +213,7 @@ fun OrderMenuScreen(
         if (totalItemsInOrder > 0) {
             CompactOrderSummaryPill(
                 totalItems = totalItemsInOrder,
-                totalPrice = currentOrderItems.entries.sumOf {
-                    val menuItem = menuItemsMap.values.flatten().find { item -> item.id == it.key }
-                    (menuItem?.price ?: 0.0).toDouble() * it.value
-                },
+                totalPrice = orderTotalPrice,
                 onPillClick = { showExpandedOrderSummary = true },
                 onOrderClick = { showOrderConfirmationDialog = true },
                 modifier = Modifier
@@ -358,12 +373,31 @@ fun MenuItemOrderCard(
                         lineHeight = 18.sp
                     )
                     Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "₹${item.price}",
-                        color = MaterialTheme.colorScheme.primary,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium
-                    )
+                    val discount = item.discountedPrice ?: 0.0
+                    if (discount > 0 && discount < item.price) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = CurrencyUtils.formatPrice(item.price),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontSize = 10.sp,
+                                textDecoration = TextDecoration.LineThrough
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = CurrencyUtils.formatPrice(discount),
+                                color = MaterialTheme.colorScheme.primary,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    } else {
+                        Text(
+                            text = CurrencyUtils.formatPrice(item.price),
+                            color = MaterialTheme.colorScheme.primary,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(4.dp))
@@ -450,7 +484,7 @@ fun MenuItemOrderCard(
 @Composable
 fun OrderSummaryDialog(
     currentOrderItems: Map<Int, Int>,
-    menuItems: List<MenuItem>,
+    allMenuItems: Map<Int, MenuItem>,
     onDismiss: () -> Unit,
     onOrderClick: () -> Unit,
     onQuantityChange: (Int, Int) -> Unit,
@@ -466,8 +500,10 @@ fun OrderSummaryDialog(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 items(currentOrderItems.toList()) { (itemId, quantity) ->
-                    val menuItem = menuItems.find { it.id == itemId }
+                    val menuItem = allMenuItems[itemId]
                     if (menuItem != null) {
+                        val discount = menuItem.discountedPrice ?: 0.0
+                        val price = if (discount > 0 && discount < menuItem.price) discount else menuItem.price
                         Card(
                             modifier = Modifier.fillMaxWidth(),
                             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
@@ -486,11 +522,29 @@ fun OrderSummaryDialog(
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 14.sp
                                     )
-                                    Text(
-                                        text = "₹${menuItem.price}",
-                                        fontSize = 12.sp,
-                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                                    )
+                                    val discount = menuItem.discountedPrice ?: 0.0
+                                    if (discount > 0 && discount < menuItem.price) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text(
+                                                text = CurrencyUtils.formatPrice(menuItem.price),
+                                                fontSize = 10.sp,
+                                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                                                textDecoration = TextDecoration.LineThrough
+                                            )
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text(
+                                                text = CurrencyUtils.formatPrice(discount),
+                                                fontSize = 12.sp,
+                                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                                            )
+                                        }
+                                    } else {
+                                        Text(
+                                            text = CurrencyUtils.formatPrice(price),
+                                            fontSize = 12.sp,
+                                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                                        )
+                                    }
                                 }
 
                                 Row(
@@ -608,7 +662,7 @@ fun CompactOrderSummaryPill(
             // Price info
             Column {
                 Text(
-                    text = "₹%.2f".format(totalPrice),
+                    text = CurrencyUtils.formatPrice(totalPrice),
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onPrimaryContainer
@@ -662,7 +716,9 @@ fun OrderSummaryCard(
     val totalItems = currentOrderItems.values.sum()
     val totalPrice = currentOrderItems.entries.sumOf {
         val menuItem = allMenuItems[it.key]
-        (menuItem?.price ?: 0.0).toDouble() * it.value
+        val discount = menuItem?.discountedPrice ?: 0.0
+        val price = if (discount > 0 && discount < (menuItem?.price ?: 0.0)) discount else menuItem?.price ?: 0.0
+        price * it.value
     }
 
     Card(
@@ -686,7 +742,7 @@ fun OrderSummaryCard(
                     fontSize = 18.sp
                 )
                 Text(
-                    text = "₹%.2f".format(totalPrice.toDouble()),
+                    text = CurrencyUtils.formatPrice(totalPrice.toDouble()),
                     fontWeight = FontWeight.Bold,
                     fontSize = 18.sp,
                     color = MaterialTheme.colorScheme.primary
@@ -711,11 +767,30 @@ fun OrderSummaryCard(
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(it.name, fontWeight = FontWeight.Medium)
-                                Text(
-                                    "₹%.2f".format(it.price.toDouble()),
-                                    fontSize = 12.sp,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+                                val discount = it.discountedPrice ?: 0.0
+                                if (discount > 0 && discount < it.price) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text(
+                                            text = CurrencyUtils.formatPrice(it.price),
+                                            fontSize = 10.sp,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            textDecoration = TextDecoration.LineThrough
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text(
+                                            text = CurrencyUtils.formatPrice(discount),
+                                            fontSize = 12.sp,
+                                            color = MaterialTheme.colorScheme.primary,
+                                            fontWeight = FontWeight.Medium
+                                        )
+                                    }
+                                } else {
+                                    Text(
+                                        CurrencyUtils.formatPrice(it.price),
+                                        fontSize = 12.sp,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
                             }
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 IconButton(onClick = { onUpdateOrder(itemId, quantity - 1) }) {
@@ -746,7 +821,8 @@ fun OrderConfirmationDialog(
     orderId: String,
     tableNumber: Int,
     currentOrderItems: Map<Int, Int>,
-    menuItemsMap: Map<String, List<MenuItem>>,
+    allMenuItems: Map<Int, MenuItem>,
+    totalPrice: Double,
     orderConfirmationState: OrderConfirmationState,
     onConfirmOrder: () -> Unit,
     onDismiss: () -> Unit,
@@ -754,13 +830,7 @@ fun OrderConfirmationDialog(
 ) {
     val context = LocalContext.current
     var kotSnapshot by remember { mutableStateOf<List<BillPrinterUtil.Companion.KotPrintingItem>>(emptyList()) }
-    val allMenuItems =
-        remember(menuItemsMap) { menuItemsMap.values.flatten().associateBy { it.id } }
     val totalItems = currentOrderItems.values.sum()
-    val totalPrice = currentOrderItems.entries.sumOf {
-        val menuItem = allMenuItems[it.key]
-        (menuItem?.price ?: 0.0).toDouble() * it.value
-    }
 
     Dialog(onDismissRequest = onDismiss) {
         Card(
@@ -794,12 +864,14 @@ fun OrderConfirmationDialog(
                     items(currentOrderItems.entries.toList()) { (itemId, quantity) ->
                         val menuItem = allMenuItems[itemId]
                         menuItem?.let {
+                            val discount = it.discountedPrice ?: 0.0
+                            val price = if (discount > 0 && discount < it.price) discount else it.price
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
                                 Text("${it.name} x $quantity")
-                                Text("₹%.2f".format(it.price.toDouble() * quantity))
+                                Text(CurrencyUtils.formatPrice(price * quantity))
                             }
                         }
                     }
@@ -820,7 +892,7 @@ fun OrderConfirmationDialog(
                 ) {
                     Text("Total Price:", fontWeight = FontWeight.Bold)
                     Text(
-                        "₹%.2f".format(totalPrice),
+                        CurrencyUtils.formatPrice(totalPrice),
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary
                     )
@@ -881,7 +953,6 @@ fun OrderConfirmationDialog(
                             text = "Slide to Confirm Order",
                             onConfirmation = {
                                 // Snapshot current items before ViewModel clears them
-                                val allMenuItems = menuItemsMap.values.flatten().associateBy { it.id }
                                 kotSnapshot = currentOrderItems.entries
                                     .filter { it.value > 0 }
                                     .mapNotNull { (itemId, qty) ->

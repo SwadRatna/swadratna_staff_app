@@ -4,7 +4,7 @@ import com.google.gson.annotations.SerializedName
 
 data class SalesResponse(
     val pagination: SalesPagination,
-    val sales: List<SaleTransaction>,
+    val sales: List<SaleTransaction>?,
     val summary: SalesSummary
 )
 

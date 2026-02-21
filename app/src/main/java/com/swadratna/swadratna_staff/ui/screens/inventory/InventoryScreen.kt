@@ -50,6 +50,7 @@ import com.swadratna.swadratna_staff.ui.components.CategoryItem
 import com.swadratna.swadratna_staff.ui.components.SearchBar
 import com.swadratna.swadratna_staff.ui.components.SwipeRefreshContainer
 import com.swadratna.swadratna_staff.ui.components.NetworkTopSnackbarHost
+import com.swadratna.swadratna_staff.utils.CurrencyUtils
 
 
 import androidx.compose.material.icons.filled.ArrowBack
@@ -228,8 +229,10 @@ fun MenuItemCard(
         ) {
             Column {
                 Text(item.name, fontWeight = FontWeight.Medium, fontSize = 16.sp)
+                val discount = item.discountedPrice ?: 0.0
+                val displayPrice = if (discount > 0 && discount < item.price) discount else item.price
                 Text(
-                    "IDR ${item.price}",
+                    CurrencyUtils.formatPrice(displayPrice),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 14.sp
                 )

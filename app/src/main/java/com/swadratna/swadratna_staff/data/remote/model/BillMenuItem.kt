@@ -7,7 +7,7 @@ data class BillMenuItem(
     @SerializedName("category_id") val categoryId: Int,
     val currency: String,
     val description: String,
-    @SerializedName("discounted_price") val discountedPrice: Double,
+    @SerializedName("discounted_price") val discountedPrice: Double?,
     val id: Int,
     val image: String,
     val ingredients: List<String>?,

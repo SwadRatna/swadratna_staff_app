@@ -45,6 +45,7 @@ import com.swadratna.swadratna_staff.ui.screens.kot.KotItemCancellationState
 import com.swadratna.swadratna_staff.ui.screens.kot.KotStatusUpdateState
 import com.swadratna.swadratna_staff.ui.screens.kot.KotViewModel
 import com.swadratna.swadratna_staff.utils.BillPrinterUtil
+import com.swadratna.swadratna_staff.utils.CurrencyUtils
 import com.swadratna.swadratna_staff.utils.rememberBluetoothPermissionLauncher
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
@@ -724,7 +725,7 @@ fun KotCard(
                                 color = if (isItemCancelled) MaterialTheme.colorScheme.primary.copy(alpha = 0.6f) else MaterialTheme.colorScheme.primary
                             )
                             Text(
-                                text = "₹${(kotItem.total_price ?: 0.0).toInt()}",
+                                text = CurrencyUtils.formatPrice(kotItem.total_price ?: 0.0),
                                 style = MaterialTheme.typography.bodyMedium.copy(
                                     textDecoration = if (isItemCancelled) androidx.compose.ui.text.style.TextDecoration.LineThrough else null
                                 ),

@@ -37,6 +37,7 @@ import com.swadratna.swadratna_staff.data.remote.model.BILL_STATUS
 import com.swadratna.swadratna_staff.data.remote.model.BillDetail
 import com.swadratna.swadratna_staff.data.remote.model.StaffRole
 import com.swadratna.swadratna_staff.utils.BillPrinterUtil
+import com.swadratna.swadratna_staff.utils.CurrencyUtils
 import com.swadratna.swadratna_staff.utils.rememberBluetoothPermissionLauncher
 import com.swadratna.swadratna_staff.ui.components.NetworkTopSnackbarHost
 import java.text.SimpleDateFormat
@@ -145,20 +146,22 @@ fun PayBillScreen(
 
                 sb.append("\n*Items:*\n")
                 bill.lineItems.forEach { item ->
-                    sb.append("${item.menuItem.name} x ${item.quantity} = ₹${"%.2f".format(item.totalPrice)}\n")
+                    val menuItem = item.menuItem
+                    val name = menuItem?.name ?: "Unknown Item"
+                    sb.append("$name x ${item.quantity} = ${CurrencyUtils.formatPrice(item.totalPrice)}\n")
                 }
 
                 sb.append("\n")
-                sb.append("Subtotal: ₹${"%.2f".format(bill.bill.subTotal)}\n")
-                if (bill.bill.serviceCharge > 0) sb.append("Service Charge: ₹${"%.2f".format(bill.bill.serviceCharge)}\n")
+                sb.append("Subtotal: ${CurrencyUtils.formatPrice(bill.bill.subTotal)}\n")
+                if (bill.bill.serviceCharge > 0) sb.append("Service Charge: ${CurrencyUtils.formatPrice(bill.bill.serviceCharge)}\n")
                 if (bill.bill.taxAmount > 0) {
                     val sgst = bill.bill.taxAmount / 2
                     val cgst = bill.bill.taxAmount / 2
-                    sb.append("SGST: ₹${"%.2f".format(sgst)}\n")
-                    sb.append("CGST: ₹${"%.2f".format(cgst)}\n")
+                    sb.append("SGST: ${CurrencyUtils.formatPrice(sgst)}\n")
+                    sb.append("CGST: ${CurrencyUtils.formatPrice(cgst)}\n")
                 }
-                if (bill.bill.discountAmount > 0) sb.append("Discount: -₹${"%.2f".format(bill.bill.discountAmount)}\n")
-                sb.append("*Grand Total: ₹${"%.2f".format(bill.bill.totalAmount)}*\n")
+                if (bill.bill.discountAmount > 0) sb.append("Discount: -${CurrencyUtils.formatPrice(bill.bill.discountAmount)}\n")
+                sb.append("*Grand Total: ${CurrencyUtils.formatPrice(bill.bill.totalAmount)}*\n")
 
                 sb.append("\nThank you for dining with Swad Ratna! Visit us again!\n")
 
@@ -438,6 +441,12 @@ fun PayBillScreen(
                     }
 
                     items(billDetail.lineItems) { item ->
+                        val menuItem = item.menuItem
+                        val safeDiscountPrice = menuItem?.discountedPrice ?: 0.0
+                        val showDiscount = menuItem != null && safeDiscountPrice > 0 && safeDiscountPrice < menuItem.price
+                        val displayUnitPrice = if (showDiscount) safeDiscountPrice else item.price
+                        val displayTotalPrice = displayUnitPrice * item.quantity
+
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -445,10 +454,10 @@ fun PayBillScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Row(modifier = Modifier.weight(0.5f), verticalAlignment = Alignment.CenterVertically) {
-                                VegNonVegIndicator(isVeg = item.menuItem.isVegetarian)
+                                VegNonVegIndicator(isVeg = menuItem?.isVegetarian ?: false)
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                    text = item.menuItem.name,
+                                    text = menuItem?.name ?: "Unknown Item",
                                     style = MaterialTheme.typography.bodyMedium,
                                     maxLines = 2,
                                     color = MaterialTheme.colorScheme.onSurface
@@ -462,14 +471,14 @@ fun PayBillScreen(
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                             Text(
-                                text = "₹${"%.0f".format(item.price)}",
+                                text = CurrencyUtils.formatPrice(displayUnitPrice),
                                 modifier = Modifier.weight(0.15f),
                                 style = MaterialTheme.typography.bodyMedium,
                                 textAlign = TextAlign.End,
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                             Text(
-                                text = "₹${"%.0f".format(item.totalPrice)}",
+                                text = CurrencyUtils.formatPrice(displayTotalPrice),
                                 modifier = Modifier.weight(0.2f),
                                 style = MaterialTheme.typography.bodyMedium,
                                 fontWeight = FontWeight.Medium,
@@ -496,7 +505,7 @@ fun PayBillScreen(
                                     Text("Subtotal",
                                         color = MaterialTheme.colorScheme.onSurface,
                                         style = MaterialTheme.typography.bodyMedium)
-                                    Text("₹${"%.2f".format(billDetail.bill.subTotal)}",
+                                    Text(CurrencyUtils.formatPrice(billDetail.bill.subTotal),
                                         color = MaterialTheme.colorScheme.onSurface
                                         , style = MaterialTheme.typography.bodyMedium)
                                 }
@@ -509,7 +518,7 @@ fun PayBillScreen(
                                         Text("Service Charge",
                                             color = MaterialTheme.colorScheme.onSurface,
                                             style = MaterialTheme.typography.bodyMedium)
-                                        Text("₹${"%.2f".format(billDetail.bill.serviceCharge)}",
+                                        Text(CurrencyUtils.formatPrice(billDetail.bill.serviceCharge),
                                             color = MaterialTheme.colorScheme.onSurface,
                                             style = MaterialTheme.typography.bodyMedium)
                                     }
@@ -523,7 +532,7 @@ fun PayBillScreen(
                                         Text("Discount",
                                             color = MaterialTheme.colorScheme.onSurface
                                             , style = MaterialTheme.typography.bodyMedium)
-                                        Text("-₹${"%.2f".format(billDetail.bill.discountAmount)}",
+                                        Text("-${CurrencyUtils.formatPrice(billDetail.bill.discountAmount)}",
                                             color = MaterialTheme.colorScheme.onSurface,
                                             style = MaterialTheme.typography.bodyMedium)
                                     }
@@ -539,7 +548,7 @@ fun PayBillScreen(
                                         Text("SGST",
                                             color = MaterialTheme.colorScheme.onSurface,
                                             style = MaterialTheme.typography.bodyMedium)
-                                        Text("₹${"%.2f".format(sgst)}",
+                                        Text(CurrencyUtils.formatPrice(sgst),
                                             color = MaterialTheme.colorScheme.onSurface,
                                             style = MaterialTheme.typography.bodyMedium)
                                     }
@@ -551,7 +560,7 @@ fun PayBillScreen(
                                         Text("CGST",
                                             color = MaterialTheme.colorScheme.onSurface,
                                             style = MaterialTheme.typography.bodyMedium)
-                                        Text("₹${"%.2f".format(cgst)}",
+                                        Text(CurrencyUtils.formatPrice(cgst),
                                             color = MaterialTheme.colorScheme.onSurface,
                                             style = MaterialTheme.typography.bodyMedium)
                                     }
@@ -566,7 +575,7 @@ fun PayBillScreen(
                                     Text("Grand Total",
                                         color = MaterialTheme.colorScheme.onSurface,
                                         style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                                    Text("₹${"%.2f".format(billDetail.bill.totalAmount)}",
+                                    Text(CurrencyUtils.formatPrice(billDetail.bill.totalAmount),
                                         color = MaterialTheme.colorScheme.onSurface,
                                         style = MaterialTheme.typography.titleMedium,
                                         fontWeight = FontWeight.Bold)
@@ -702,7 +711,7 @@ fun PayBillScreen(
             },
             text = {
                 Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-                    Text("Amount: ₹${"%.2f".format(postPaymentAmount)}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text("Amount: ${CurrencyUtils.formatPrice(postPaymentAmount)}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     if (!postPaymentPhoneNumber.isNullOrBlank()) {
                         Spacer(modifier = Modifier.height(16.dp))
                         Text("Share receipt with customer?", color = MaterialTheme.colorScheme.onSurfaceVariant)

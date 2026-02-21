@@ -198,7 +198,7 @@ class BillPrinterUtil {
                 val priceStr = String.format("%6.2f", unitPrice).replace(".00", "")
                 val totalStr = String.format("%7.2f", totalPrice).replace(".00", "")
 
-                val formatted = formatItemName24(item.menuItem.name)
+                val formatted = formatItemName24(item.menuItem?.name ?: "Unknown Item")
 
                 sb.append(
                     formatted.line1 +
@@ -223,26 +223,26 @@ class BillPrinterUtil {
             sb.append("${"-".repeat(32)}\n")
 
             val totalQty = lineItems.sumOf { it.quantity }
-            val subTotalStr = String.format("%.2f", bill.subTotal)
+            val subTotalStr = CurrencyUtils.formatPriceNoSymbol(bill.subTotal)
             sb.append("${" ".repeat(6)}Total Qty: ${totalQty}${" ".repeat(3)}Sub: ${subTotalStr}\n")
             sb.append("${"-".repeat(32)}\n")
             sb.append("${" ".repeat(5)}Total\n")
-            val sgstAmount = String.format("%.2f", bill.taxAmount / 2)
-            val cgstAmount = String.format("%.2f", bill.taxAmount / 2)
+            val sgstAmount = CurrencyUtils.formatPriceNoSymbol(bill.taxAmount / 2)
+            val cgstAmount = CurrencyUtils.formatPriceNoSymbol(bill.taxAmount / 2)
             sb.append("${" ".repeat(5)}SGST 2.5%${" ".repeat(10)}${sgstAmount}\n")
             sb.append("${" ".repeat(5)}CGST 2.5%${" ".repeat(10)}${cgstAmount}\n")
 
             if (bill.serviceCharge > 0) {
-                val serviceChargeStr = String.format("%.2f", bill.serviceCharge)
+                val serviceChargeStr = CurrencyUtils.formatPriceNoSymbol(bill.serviceCharge)
                 sb.append("${" ".repeat(0)}Service Charge${" ".repeat(10)}${serviceChargeStr}\n")
             }
 
             if (bill.discountAmount > 0) {
-                val roundOffStr = String.format("%.2f", -bill.discountAmount.toDouble())
+                val roundOffStr = CurrencyUtils.formatPriceNoSymbol(-bill.discountAmount.toDouble())
                 sb.append("${" ".repeat(0)}Round off${" ".repeat(10)}${roundOffStr}\n")
             }
 
-            val grandTotalStr = String.format("%.2f", bill.totalAmount)
+            val grandTotalStr = CurrencyUtils.formatPriceNoSymbol(bill.totalAmount)
             sb.append("\n\u001B@\n")
             sb.append("${" ".repeat(0)}Grand Total ₹${" ".repeat(10)}${grandTotalStr}\n")
             sb.append("[C]Thank You,\n")
