@@ -24,6 +24,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.swadratna.swadratna_staff.R
 import com.swadratna.swadratna_staff.data.local.entities.StaffUser
+import com.swadratna.swadratna_staff.data.remote.model.StaffRole
 import com.swadratna.swadratna_staff.navigation.NavigationRoute
 import com.swadratna.swadratna_staff.ui.components.NavButton
 import com.swadratna.swadratna_staff.ui.screens.login.LoginViewModel
@@ -212,6 +213,15 @@ fun StaffProfileScreen(
                     subtitle = "Manage inventory items",
                     onClick = { navController.navigate(NavigationRoute.Inventory.route) }
                 )
+
+                if (staffUser?.role == StaffRole.MANAGER.roleName) {
+                    ProfileMenuItem(
+                        icon = ImageVector.vectorResource(R.drawable.ic_badge),
+                        title = "Staff Attendance",
+                        subtitle = "Manage staff attendance",
+                        onClick = { navController.navigate(NavigationRoute.Attendance.route) }
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
