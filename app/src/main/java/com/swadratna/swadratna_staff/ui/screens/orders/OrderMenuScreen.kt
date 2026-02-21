@@ -1,6 +1,10 @@
 package com.swadratna.swadratna_staff.ui.screens.orders
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -107,9 +111,15 @@ fun OrderMenuScreen(
         } ?: emptyList()
     }
 
-    val filteredMenuItems = remember(currentMenuItems, searchQuery) {
-        currentMenuItems.filter { item ->
-            item.isAvailable && item.name.contains(searchQuery, ignoreCase = true)
+    val filteredMenuItems = remember(currentMenuItems, searchQuery, menuItemsMap) {
+        if (searchQuery.isNotBlank()) {
+            menuItemsMap.values.flatten().filter { item ->
+                item.isAvailable && item.name.contains(searchQuery, ignoreCase = true)
+            }
+        } else {
+            currentMenuItems.filter { item ->
+                item.isAvailable
+            }
         }
     }
 
@@ -152,27 +162,40 @@ fun OrderMenuScreen(
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                 )
 
-                Row(
-                    modifier = Modifier
-                        .fillMaxSize()
+                BoxWithConstraints(
+                    modifier = Modifier.fillMaxSize()
                 ) {
-                    CategoryList(
-                        categories = categories,
-                        selectedCategoryId = selectedCategoryId, // Pass ID
-                        onCategorySelected = { selectedCategoryId = it?.id }, // Use category.id
-                        modifier = Modifier.weight(0.30f)
-                    )
+                    val screenWidth = maxWidth
+                    val categoryWidth = screenWidth * 0.30f
+                    
+                    Row(
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        AnimatedVisibility(
+                            visible = searchQuery.isEmpty(),
+                            enter = expandHorizontally() + fadeIn(),
+                            exit = shrinkHorizontally() + fadeOut()
+                        ) {
+                            Row {
+                                CategoryList(
+                                    categories = categories,
+                                    selectedCategoryId = selectedCategoryId, // Pass ID
+                                    onCategorySelected = { selectedCategoryId = it?.id }, // Use category.id
+                                    modifier = Modifier.width(categoryWidth)
+                                )
+                                Spacer(modifier = Modifier.width(12.dp))
+                            }
+                        }
 
-                    Spacer(modifier = Modifier.width(12.dp))
-
-                    MenuItemList(
-                        menuItems = filteredMenuItems,
-                        orderItems = currentOrderItems,
-                        onUpdateOrder = { itemId, quantity ->
-                            viewModel.updateOrderItem(itemId, quantity)
-                        },
-                        modifier = Modifier.weight(0.70f)
-                    )
+                        MenuItemList(
+                            menuItems = filteredMenuItems,
+                            orderItems = currentOrderItems,
+                            onUpdateOrder = { itemId, quantity ->
+                                viewModel.updateOrderItem(itemId, quantity)
+                            },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
                 }
             }
         }
