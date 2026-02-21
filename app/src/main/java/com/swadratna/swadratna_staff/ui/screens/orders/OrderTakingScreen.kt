@@ -54,6 +54,8 @@ import com.swadratna.swadratna_staff.ui.theme.RedGrey20
 import com.swadratna.swadratna_staff.ui.components.NetworkTopSnackbarHost
 import kotlin.math.absoluteValue
 
+import com.swadratna.swadratna_staff.data.remote.model.StaffRole
+
 /**
  * Order taking screen with customizable bottom navigation options.
  *
@@ -82,6 +84,7 @@ fun OrderTakingScreen(
     val categories by viewModel.categories.collectAsState()
     var selectedCategoryId by remember { mutableStateOf<Int?>(null) }
     var selectedTab by remember { mutableStateOf(defaultTab.coerceIn(0, 1)) }
+    val role by viewModel.staffRole.collectAsState()
     
     // Free table dialog state
     var showFreeTableDialog by remember { mutableStateOf(false) }
@@ -145,15 +148,17 @@ fun OrderTakingScreen(
                     }
                 },
                 actions = {
-                    Button(
-                        onClick = { showFreeTableDialog = true },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.surface,
-                            contentColor = MaterialTheme.colorScheme.primary,
-                        ),
-                        modifier = Modifier.padding(horizontal = 8.dp)
-                    ) {
-                        Text("Free Table", fontSize = 14.sp)
+                    if (role == StaffRole.MANAGER.roleName) {
+                        Button(
+                            onClick = { showFreeTableDialog = true },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.surface,
+                                contentColor = MaterialTheme.colorScheme.primary,
+                            ),
+                            modifier = Modifier.padding(horizontal = 8.dp)
+                        ) {
+                            Text("Free Table", fontSize = 14.sp)
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
