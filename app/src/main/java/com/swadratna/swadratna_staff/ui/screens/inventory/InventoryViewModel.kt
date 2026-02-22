@@ -84,9 +84,9 @@ class InventoryViewModel @Inject constructor(
         }
     }
 
-    fun getMenuItems(locationId: Int, searchQuery: String? = null) {
+    fun getMenuItems(locationId: Int, searchQuery: String? = null, showLoading: Boolean = true) {
         viewModelScope.launch {
-            _loading.value = true
+            if (showLoading) _loading.value = true
             _error.value = null
 
             val result = repository.getMenu(locationId, searchQuery)
@@ -110,13 +110,20 @@ class InventoryViewModel @Inject constructor(
                 if (_selectedCategory.value == null && response.categories.isNotEmpty()) {
                     _selectedCategory.value = response.categories.first()
                     _menuItems.value = _menuItemsMap.value.getOrElse(response.categories.first().name) { allItems }
+                } else if (_selectedCategory.value != null) {
+                    // Update the selected category reference with the fresh object from the response
+                    // This ensures that properties like isAvailable are up-to-date
+                    val freshSelectedCategory = response.categories.find { it.id == _selectedCategory.value!!.id }
+                    if (freshSelectedCategory != null) {
+                        _selectedCategory.value = freshSelectedCategory
+                    }
                 }
 
-                _loading.value = false
+                if (showLoading) _loading.value = false
 
             }.onFailure { exception ->
                 _error.value = exception.message
-                _loading.value = false
+                if (showLoading) _loading.value = false
             }
         }
     }
@@ -189,6 +196,38 @@ class InventoryViewModel @Inject constructor(
                 is ApiResult.Error -> {
                     _error.value = "Failed to update availability: ${result.exception.message}"
                     println("Error updating availability: ${result.exception.message}")
+                }
+            }
+        }
+    }
+
+    fun onCategoryAvailabilityChanged(category: Category, isAvailable: Boolean) {
+        viewModelScope.launch {
+            when (val result = repository.updateCategoryAvailability(staffLocationId.value!!, category.id, isAvailable)) {
+                is ApiResult.Success -> {
+                    // Update local state if API call is successful (Smart Update)
+                    _categories.update { currentCategories ->
+                        currentCategories.map { cat ->
+                            if (cat.id == category.id) {
+                                cat.copy(isAvailable = isAvailable)
+                            } else {
+                                cat
+                            }
+                        }
+                    }
+                    
+                    // Also update selectedCategory if it's the same
+                    if (_selectedCategory.value?.id == category.id) {
+                         _selectedCategory.update { it?.copy(isAvailable = isAvailable) }
+                    }
+
+                    // Refresh data from API to ensure consistency
+                    staffLocationId.value?.let { locId ->
+                        getMenuItems(locId, _searchQuery.value, showLoading = false)
+                    }
+                }
+                is ApiResult.Error -> {
+                    _error.value = "Failed to update category availability: ${result.exception.message}"
                 }
             }
         }

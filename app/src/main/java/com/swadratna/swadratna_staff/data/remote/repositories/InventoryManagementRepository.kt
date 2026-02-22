@@ -67,4 +67,25 @@ class InventoryManagementRepository @Inject constructor(
             ApiResult.Error(e)
         }
     }
+
+    suspend fun updateCategoryAvailability(locationId: Int, categoryId: Int, isAvailable: Boolean): ApiResult<Unit> {
+        if (!networkMonitor.isOnline.value) {
+            return ApiResult.Error(Exception("No network connection"))
+        }
+        return try {
+            val requestBody = AvailabilityRequest(isAvailable)
+            val response = apiService.updateCategoryAvailability(locationId.toString(), categoryId.toString(), requestBody)
+
+            if (response.isSuccessful) {
+                // Return success without data, as the response body might be empty or not needed
+                ApiResult.Success(Unit)
+            } else {
+                ApiResult.Error(HttpException(response))
+            }
+        } catch (e: IOException) {
+            ApiResult.Error(e)
+        } catch (e: Exception) {
+            ApiResult.Error(e)
+        }
+    }
 }

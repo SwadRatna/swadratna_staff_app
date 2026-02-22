@@ -1,6 +1,7 @@
 package com.swadratna.swadratna_staff.ui.screens.inventory
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -11,15 +12,19 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Divider
+import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -37,13 +42,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import coil.compose.AsyncImage
 import com.swadratna.swadratna_staff.data.remote.model.Category
 import com.swadratna.swadratna_staff.data.remote.model.MenuItem
 import com.swadratna.swadratna_staff.ui.components.CategoryItem
@@ -58,6 +66,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.ui.graphics.Color
 import androidx.navigation.NavController
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -130,11 +139,24 @@ fun InventoryScreen(
                                 modifier = Modifier.weight(0.3f)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
-                            MenuItemList(
-                                menuItems = filteredMenuItems, onAvailabilityChanged = { item, isAvailable ->
-                                    viewModel.onAvailabilityChanged(item, isAvailable)
-                                }, modifier = Modifier.weight(0.7f)
-                            )
+                            
+                            Column(modifier = Modifier.weight(0.7f)) {
+                                selectedCategory?.let { category ->
+                                    CategoryHeader(
+                                        category = category,
+                                        onAvailabilityChanged = { isAvailable ->
+                                            viewModel.onCategoryAvailabilityChanged(category, isAvailable)
+                                        }
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                }
+                                
+                                MenuItemList(
+                                    menuItems = filteredMenuItems, onAvailabilityChanged = { item, isAvailable ->
+                                        viewModel.onAvailabilityChanged(item, isAvailable)
+                                    }
+                                )
+                            }
                         }
                     }
 
@@ -146,6 +168,66 @@ fun InventoryScreen(
                 }
             }
         }
+    }
+}
+
+@Composable
+fun CategoryHeader(
+    category: Category,
+    onAvailabilityChanged: (Boolean) -> Unit
+) {
+    var showDialog by remember { mutableStateOf(false) }
+
+    if (showDialog) {
+        AlertDialog(
+            onDismissRequest = { showDialog = false },
+            title = { Text("Confirm Action") },
+            text = { 
+                Text(
+                    if (category.isAvailable) 
+                        "This category will no longer be visible to users. Do you want to proceed?" 
+                    else 
+                        "This category will be visible to users. Do you want to proceed?"
+                ) 
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDialog = false
+                    onAvailabilityChanged(!category.isAvailable)
+                }) {
+                    Text("Proceed")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    Column(
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier
+                .padding(vertical = 8.dp)
+                .fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = category.name,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Switch(
+                checked = category.isAvailable,
+                onCheckedChange = { showDialog = true }
+            )
+        }
+        Divider()
     }
 }
 
@@ -163,7 +245,8 @@ fun CategoryList(
             CategoryItem(
                 category = category,
                 isSelected = category.id == selectedCategory?.id,
-                onCategorySelected = { onCategorySelected(category) })
+                onCategorySelected = { onCategorySelected(category) }
+            )
         }
     }
 }
@@ -214,29 +297,78 @@ fun MenuItemCard(
         )
     }
 
-    Card(
-        shape = RoundedCornerShape(8.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        modifier = Modifier.fillMaxWidth()
+    ElevatedCard(
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        modifier = Modifier
+            .fillMaxWidth()
+            .alpha(if (item.isAvailable) 1f else 0.6f)
     ) {
         Row(
             modifier = Modifier
-                .padding(16.dp)
+                .padding(12.dp)
                 .fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+            verticalAlignment = Alignment.Top
         ) {
-            Column {
-                Text(item.name, fontWeight = FontWeight.Medium, fontSize = 16.sp)
+            // Image
+            AsyncImage(
+                model = item.image,
+                contentDescription = item.name,
+                modifier = Modifier
+                    .size(80.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                contentScale = ContentScale.Crop
+            )
+
+            Spacer(modifier = Modifier.width(16.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    // Veg/Non-Veg Icon
+                    Box(
+                        modifier = Modifier
+                            .size(16.dp)
+                            .border(1.dp, if(item.isVegetarian) Color.Green else Color.Red)
+                            .padding(2.dp)
+                    ) {
+                        Box(modifier = Modifier.fillMaxSize().background(if(item.isVegetarian) Color.Green else Color.Red, CircleShape))
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = item.name,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                // Price
                 val discount = item.discountedPrice ?: 0.0
                 val displayPrice = if (discount > 0 && discount < item.price) discount else item.price
-                Text(
-                    CurrencyUtils.formatPrice(displayPrice),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontSize = 14.sp
-                )
+                
+                Row(verticalAlignment = Alignment.Bottom) {
+                    Text(
+                        text = CurrencyUtils.formatPrice(displayPrice),
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    if (discount > 0 && discount < item.price) {
+                         Spacer(modifier = Modifier.width(8.dp))
+                         Text(
+                             text = CurrencyUtils.formatPrice(item.price),
+                             style = MaterialTheme.typography.bodyMedium.copy(textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough),
+                             color = MaterialTheme.colorScheme.onSurfaceVariant
+                         )
+                    }
+                }
             }
+
             Switch(
                 checked = item.isAvailable,
                 onCheckedChange = { showDialog = true }

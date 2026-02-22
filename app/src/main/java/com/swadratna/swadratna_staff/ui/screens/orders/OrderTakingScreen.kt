@@ -105,8 +105,10 @@ fun OrderTakingScreen(
     }
 
     LaunchedEffect(categories) {
-        if (selectedCategoryId == null && categories.isNotEmpty()) {
-            selectedCategoryId = categories.first().id
+        if (categories.isNotEmpty()) {
+            if (selectedCategoryId == null || categories.none { it.id == selectedCategoryId }) {
+                selectedCategoryId = categories.first().id
+            }
         }
     }
 

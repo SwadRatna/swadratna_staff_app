@@ -11,7 +11,8 @@ data class Category(
     val name: String,
     val description: String,
     @SerializedName("display_order") val displayOrder: Int,
-    @SerializedName("is_active") val isActive: Boolean
+    @SerializedName("is_active") val isActive: Boolean,
+    @SerializedName("is_location_available") var isAvailable: Boolean = true
 )
 
 // --- 2. Menu Item Details Data Classes ---

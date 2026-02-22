@@ -207,14 +207,15 @@ fun StaffProfileScreen(
             }
 
             ProfileSection(title = "Management") {
-                ProfileMenuItem(
-                    icon = ImageVector.vectorResource(R.drawable.ic_inventory),
-                    title = "Inventory",
-                    subtitle = "Manage inventory items",
-                    onClick = { navController.navigate(NavigationRoute.Inventory.route) }
-                )
 
                 if (staffUser?.role == StaffRole.MANAGER.roleName) {
+                    ProfileMenuItem(
+                        icon = ImageVector.vectorResource(R.drawable.ic_inventory),
+                        title = "Inventory",
+                        subtitle = "Manage inventory items",
+                        onClick = { navController.navigate(NavigationRoute.Inventory.route) }
+                    )
+
                     ProfileMenuItem(
                         icon = ImageVector.vectorResource(R.drawable.ic_badge),
                         title = "Staff Attendance",

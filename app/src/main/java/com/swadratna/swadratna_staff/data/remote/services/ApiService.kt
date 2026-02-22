@@ -90,6 +90,13 @@ interface ApiService {
         @Body request: AvailabilityRequest
     ): Response<AvailabilityResponse>
 
+    @PATCH("/api/v1/staff/menu/category-availability/{locationId}/{categoryId}")
+    suspend fun updateCategoryAvailability(
+        @Path("locationId") locationId: String,
+        @Path("categoryId") categoryId: String,
+        @Body request: AvailabilityRequest
+    ): Response<AvailabilityResponse>
+
     @GET("/api/v1/staff/orders/detail/{orderID}")
     suspend fun getOrderDetail(@Path("orderID") orderID: String): Response<OrderDetailsX>
 

@@ -291,7 +291,7 @@ class OrderManagementViewModel @Inject constructor(
             val result = repository.getMenu(staffLocationId, searchQuery)
 
             result.onSuccess { response ->
-                _categories.value = response.categories
+                _categories.value = response.categories.filter { it.isAvailable }
                 _menuItemsMap.value = response.menuItems
                 _loading.value = false
 

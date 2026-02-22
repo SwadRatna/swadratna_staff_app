@@ -30,6 +30,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -176,7 +177,7 @@ fun NavigationComponent(
             if (shouldShowBottomBar) {
                 TopAppBar(
                     title = {
-                        Text(text = stringResource(R.string.company_name), fontFamily = FontFamily.Cursive, fontSize = 28.sp)
+                        Text(text = stringResource(R.string.company_name), fontFamily = FontFamily(Font(R.font.pacifico_regular)), fontSize = 28.sp)
                     }, actions = {
                         IconButton(
                             onClick = {
