@@ -87,6 +87,13 @@ sealed class CreateParcelOrderState {
     data class Error(val message: String) : CreateParcelOrderState()
 }
 
+sealed class CancelOrderState {
+    object Idle : CancelOrderState()
+    object Loading : CancelOrderState()
+    object Success : CancelOrderState()
+    data class Error(val message: String) : CancelOrderState()
+}
+
 @HiltViewModel
 class OrderManagementViewModel @Inject constructor(
     private val repository: OrderManagementRepository,
@@ -142,6 +149,9 @@ class OrderManagementViewModel @Inject constructor(
 
     private val _createParcelOrderState = MutableStateFlow<CreateParcelOrderState>(CreateParcelOrderState.Idle)
     val createParcelOrderState: StateFlow<CreateParcelOrderState> = _createParcelOrderState.asStateFlow()
+
+    private val _cancelOrderState = MutableStateFlow<CancelOrderState>(CancelOrderState.Idle)
+    val cancelOrderState: StateFlow<CancelOrderState> = _cancelOrderState.asStateFlow()
 
     private val _paymentSuccess = kotlinx.coroutines.flow.MutableSharedFlow<com.swadratna.swadratna_staff.data.remote.services.RecordPaymentResponse>()
     val paymentSuccess = _paymentSuccess.asSharedFlow()
@@ -432,6 +442,19 @@ class OrderManagementViewModel @Inject constructor(
 
     fun resetCreateParcelOrderState() {
         _createParcelOrderState.value = CreateParcelOrderState.Idle
+    }
+
+    fun cancelOrder(orderId: Int, reason: String) {
+        viewModelScope.launch {
+            _cancelOrderState.value = CancelOrderState.Loading
+            repository.cancelOrder(orderId, reason)
+                .onSuccess { _cancelOrderState.value = CancelOrderState.Success }
+                .onFailure { _cancelOrderState.value = CancelOrderState.Error(it.message ?: "Unknown error") }
+        }
+    }
+
+    fun resetCancelOrderState() {
+        _cancelOrderState.value = CancelOrderState.Idle
     }
 
     fun recordBillPayment(billId: Int, request: com.swadratna.swadratna_staff.data.remote.services.RecordPaymentRequest, orderIdForRefresh: String?) {

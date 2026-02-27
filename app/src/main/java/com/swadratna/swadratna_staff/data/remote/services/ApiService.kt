@@ -26,6 +26,7 @@ import com.swadratna.swadratna_staff.data.remote.model.KotStatusUpdateRequest
 import com.swadratna.swadratna_staff.data.remote.model.KotStatusUpdateResponse
 
 import com.swadratna.swadratna_staff.data.remote.model.OrderDetailsX
+import com.swadratna.swadratna_staff.data.remote.model.OrderStatusUpdateRequest
 import com.swadratna.swadratna_staff.data.remote.model.BillDetail
 import com.swadratna.swadratna_staff.data.remote.model.FreeTableRequest
 import com.swadratna.swadratna_staff.data.remote.model.FreeTableResponse
@@ -133,6 +134,13 @@ interface ApiService {
         @Body request: CancelKotItemsRequest
     ): Response<ResponseBody>
 
+
+    @PATCH("/api/v1/staff/orders/{orderId}/status")
+    suspend fun updateOrderStatus(
+        @Header("X-Key") xKey: String,
+        @Path("orderId") orderId: Int,
+        @Body request: OrderStatusUpdateRequest
+    ): Response<ResponseBody>
 
     @POST("/api/v1/staff/tables/{tableId}/free")
     suspend fun freeTheTable(

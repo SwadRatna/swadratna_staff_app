@@ -86,6 +86,7 @@ fun OrderTakingScreen(
     // Free table dialog state
     var showFreeTableDialog by remember { mutableStateOf(false) }
     val freeTableState by viewModel.freeTableState.collectAsState()
+    val cancelOrderState by viewModel.cancelOrderState.collectAsState()
 
     // Validate tab selection based on available tabs
     LaunchedEffect(showMenuTab, showOrdersTab) {
@@ -121,6 +122,19 @@ fun OrderTakingScreen(
         }
     }
 
+    LaunchedEffect(cancelOrderState) {
+        when (cancelOrderState) {
+            is CancelOrderState.Success -> {
+                viewModel.resetCancelOrderState()
+                onBack()
+            }
+            is CancelOrderState.Error -> {
+                viewModel.resetCancelOrderState()
+            }
+            else -> {}
+        }
+    }
+
 
     Scaffold(
         topBar = {
@@ -153,7 +167,7 @@ fun OrderTakingScreen(
                         ),
                         modifier = Modifier.padding(horizontal = 8.dp)
                     ) {
-                        Text("Free Table", fontSize = 14.sp)
+                        Text(if (tableNumber == 0) "Cancel Parcel" else "Free Table", fontSize = 14.sp)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -220,18 +234,32 @@ fun OrderTakingScreen(
 
     // Free Table Confirmation Dialog
     if (showFreeTableDialog) {
+        val isParcel = tableNumber == 0
         AlertDialog(
             onDismissRequest = { showFreeTableDialog = false },
-            title = { Text("Free Table") },
-            text = { Text("Are you sure you want to free table $tableNumber? This action will cancel the current order.") },
+            title = { Text(if (isParcel) "Cancel Parcel" else "Free Table") },
+            text = {
+                Text(
+                    if (isParcel) "Are you sure you want to cancel this parcel order?"
+                    else "Are you sure you want to free table $tableNumber? This action will cancel the current order."
+                )
+            },
             confirmButton = {
                 TextButton(
                     onClick = {
                         showFreeTableDialog = false
-                        viewModel.freeTheTable(tableNumber, true, "Table freed by staff")
+                        if (isParcel && orderId != null) {
+                            viewModel.cancelOrder(orderId, "User cancelled")
+                        } else {
+                            viewModel.freeTheTable(
+                                tableNumber,
+                                true,
+                                "Table freed by staff"
+                            )
+                        }
                     }
                 ) {
-                    Text("Yes, Free Table")
+                    Text(if (isParcel) "Yes, Cancel Parcel" else "Yes, Free Table")
                 }
             },
             dismissButton = {

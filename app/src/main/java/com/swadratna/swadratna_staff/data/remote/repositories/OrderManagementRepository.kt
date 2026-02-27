@@ -10,7 +10,9 @@ import com.swadratna.swadratna_staff.data.remote.model.MenuResponse
 import com.swadratna.swadratna_staff.data.remote.model.OccupyTableRequest
 import com.swadratna.swadratna_staff.data.remote.model.OccupyTableResponse
 import com.swadratna.swadratna_staff.data.remote.model.OrderDetailsX
+import com.swadratna.swadratna_staff.data.remote.model.OrderStatusUpdateRequest
 import com.swadratna.swadratna_staff.data.remote.model.TableListResponse
+import okhttp3.ResponseBody
 import com.swadratna.swadratna_staff.data.remote.model.BillDetail
 import com.swadratna.swadratna_staff.data.remote.model.FreeTableRequest
 import com.swadratna.swadratna_staff.data.remote.model.FreeTableResponse
@@ -270,6 +272,25 @@ class OrderManagementRepository @Inject constructor(
             }
         } catch (e: Exception) {
             Result.failure(e)
+        }
+    }
+
+    suspend fun cancelOrder(orderId: Int, reason: String): Result<ResponseBody> {
+        if (!networkMonitor.isOnline.value) {
+            return Result.failure<ResponseBody>(Exception("No network connection"))
+        }
+        return try {
+            val request = OrderStatusUpdateRequest(status = "cancelled", reason = reason)
+            val response = apiService.updateOrderStatus("RMWvXbJYiKDtjtCEj03iGP", orderId, request)
+            if (response.isSuccessful) {
+                response.body()?.let {
+                    Result.success(it)
+                } ?: Result.failure<ResponseBody>(Exception("Failed to cancel order: Empty response"))
+            } else {
+                Result.failure<ResponseBody>(Exception("Failed to cancel order: ${response.message()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure<ResponseBody>(e)
         }
     }
 
