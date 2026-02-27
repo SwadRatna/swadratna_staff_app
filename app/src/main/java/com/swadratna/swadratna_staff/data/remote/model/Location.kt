@@ -8,5 +8,6 @@ data class Location(
     val restaurant_id: Int,
     val status: String,
     val tenant_id: Int,
-    val updated_at: String
+    val updated_at: String,
+    val name: String? = null
 )

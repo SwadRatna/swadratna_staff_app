@@ -464,6 +464,16 @@ fun StaffProfileHeader(staffUser: StaffUser) {
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.6f)
             )
+
+            // Branch Name
+            if (!staffUser.location.name.isNullOrBlank()) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Branch: ${staffUser.location.name}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.6f)
+                )
+            }
         }
     }
 }
