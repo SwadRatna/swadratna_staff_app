@@ -49,6 +49,14 @@ class BillPrinterUtil {
         )
 
         /**
+         * Helper to justify text left and right within a fixed width, then center it.
+         */
+        private fun justifyAndCenter(left: String, right: String, width: Int = CHAR_WIDTH): String {
+            val spaceNeeded = (width - left.length - right.length).coerceAtLeast(1)
+            return "[C]$left" + " ".repeat(spaceNeeded) + "$right\n"
+        }
+
+        /**
          * Generates ESC/POS formatted KOT text.
          * Layout mirrors the sample image: header, customer/table, items with Sl.No & Qty, total.
          */
@@ -69,22 +77,24 @@ class BillPrinterUtil {
             // Header
             sb.append("[C]<b>KOT</b>\n\n")
 
+
             val dateStr = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(createdAt)
             val left = headerLeft?.takeIf { it.isNotBlank() } ?: ""
-            sb.append("[L]$left[R]$dateStr\n")
+            // Centered justified line
+            sb.append(justifyAndCenter(left, dateStr))
 
             customerName?.let { name ->
-                sb.append("Customer : ${name}\n")
+                sb.append("[C]Customer : ${name}\n")
             }
 
             tableLabel?.let { tbl ->
-                sb.append("Table No. : ${tbl}\n")
+                sb.append("[C]Table No. : ${tbl}\n")
             }
 
-            sb.append("${"-".repeat(32)}\n")
+            sb.append("[C]${"-".repeat(32)}\n")
 
             // Column headers
-            sb.append(
+            sb.append("[C]" +
                 pad("Sl.No", colSlNo) +
                 pad("Item Name", colName) +
                 pad("Qty.", colQtyKot) + "\n"
@@ -95,14 +105,14 @@ class BillPrinterUtil {
                 val qtyStr = String.format("%3s", item.quantity.toString())
                 val formatted = formatItemName24(item.menu_name, maxLine = colName)
 
-                sb.append(
+                sb.append("[C]" +
                     pad((index + 1).toString(), colSlNo) +
                     pad(formatted.line1, colName) +
                     pad(qtyStr, colQtyKot) + "\n"
                 )
 
                 formatted.line2?.let { line2 ->
-                    sb.append(
+                    sb.append("[C]" +
                         pad("", colSlNo) +
                         pad(line2, colName) +
                         pad("", colQtyKot) + "\n"
@@ -110,10 +120,14 @@ class BillPrinterUtil {
                 }
             }
 
-            sb.append("${"-".repeat(32)}\n")
+            sb.append("[C]${"-".repeat(32)}\n")
 
             val totalItems = kotItems.sumOf { it.quantity }
-            sb.append("[R]Total Items : ${totalItems}")
+            // Center the total line, or right align it within the centered block
+            // Currently [R] pushes to hardware right.
+            // We want it visually centered-right.
+            // Let's just center the text "Total Items : X"
+            sb.append(justifyAndCenter("", "Total Items : $totalItems"))
 
             return sb.toString()
         }
@@ -162,28 +176,28 @@ class BillPrinterUtil {
             sb.append("\n")
 
             customerName?.let { name ->
-                sb.append("Name: ${name}")
+                sb.append("[C]Name: ${name}")
                 customerMobile?.let { mobile ->
                     sb.append(" (M: ${mobile})")
                 }
                 sb.append("\n")
             }
 
-            // Bill Information - Two columns
-            sb.append("Date: ${formatDate(bill.createdAt)}${" ".repeat(1)}Time:${formatTime(bill.createdAt)}\n")
-            sb.append("Dine In: ${(bill.tableId)}\n")
+            // Bill Information
+            sb.append("[C]Date: ${formatDate(bill.createdAt)}${" ".repeat(1)}Time:${formatTime(bill.createdAt)}\n")
+            sb.append("[C]Dine In: ${(bill.tableId)}\n")
             cashierName?.let { cashier ->
-                sb.append("Cashier: ${cashier}\n")
-                sb.append("Bill Number: ${bill.billNumber}\n")
+                sb.append("[C]Cashier: ${cashier}\n")
+                sb.append("[C]Bill Number: ${bill.billNumber}\n")
             } ?: run {
-                sb.append("${" ".repeat(2)}Bill No.: ${bill.billNumber}\n")
+                sb.append("[C]${" ".repeat(2)}Bill No.: ${bill.billNumber}\n")
             }
-            sb.append("Token No.: ${bill.orderId}\n")
+            sb.append("[C]Token No.: ${bill.orderId}\n")
             sb.append("\n")
 
-            sb.append("${"-".repeat(32)}\n")
+            sb.append("[C]${"-".repeat(32)}\n")
 
-            sb.append(pad("Items", colItem) +
+            sb.append("[C]" + pad("Items", colItem) +
                     pad("Qty", colQty) +
                     pad("Rate", colPrice) +
                     pad("Amt", colAmt) + "\n"
@@ -200,7 +214,7 @@ class BillPrinterUtil {
 
                 val formatted = formatItemName24(item.menuItem?.name ?: "Unknown Item")
 
-                sb.append(
+                sb.append("[C]" +
                     formatted.line1 +
                             " ".repeat(15 - formatted.line1.length.coerceAtMost(15)) +
                             qtyStr + "   " +
@@ -210,41 +224,42 @@ class BillPrinterUtil {
                 )
 
                 if (formatted.line2 != null) {
-                    sb.append(formatted.line2 + "\n")
+                    sb.append("[C]" + formatted.line2 + "\n")
                 }
 
                 item.instructions?.let { instructions ->
                     if (instructions.isNotBlank()) {
-                        sb.append("  Note: ${truncateText(instructions, 28)}\n")
+                        sb.append("[C]  Note: ${truncateText(instructions, 28)}\n")
                     }
                 }
             }
 
-            sb.append("${"-".repeat(32)}\n")
+            sb.append("[C]${"-".repeat(32)}\n")
 
             val totalQty = lineItems.sumOf { it.quantity }
             val subTotalStr = CurrencyUtils.formatPriceNoSymbol(bill.subTotal)
-            sb.append("${" ".repeat(6)}Total Qty: ${totalQty}${" ".repeat(3)}Sub: ${subTotalStr}\n")
-            sb.append("${"-".repeat(32)}\n")
-            sb.append("${" ".repeat(5)}Total\n")
+            sb.append("[C]${" ".repeat(6)}Total Qty: ${totalQty}${" ".repeat(3)}Sub: ${subTotalStr}\n")
+            sb.append("[C]${"-".repeat(32)}\n")
+            sb.append("[C]${" ".repeat(5)}Total\n")
+            
             val sgstAmount = CurrencyUtils.formatPriceNoSymbol(bill.taxAmount / 2)
             val cgstAmount = CurrencyUtils.formatPriceNoSymbol(bill.taxAmount / 2)
-            sb.append("${" ".repeat(5)}SGST 2.5%${" ".repeat(10)}${sgstAmount}\n")
-            sb.append("${" ".repeat(5)}CGST 2.5%${" ".repeat(10)}${cgstAmount}\n")
+            sb.append("[C]${" ".repeat(5)}SGST 2.5%${" ".repeat(10)}${sgstAmount}\n")
+            sb.append("[C]${" ".repeat(5)}CGST 2.5%${" ".repeat(10)}${cgstAmount}\n")
 
             if (bill.serviceCharge > 0) {
                 val serviceChargeStr = CurrencyUtils.formatPriceNoSymbol(bill.serviceCharge)
-                sb.append("${" ".repeat(0)}Service Charge${" ".repeat(10)}${serviceChargeStr}\n")
+                sb.append("[C]${" ".repeat(0)}Service Charge${" ".repeat(10)}${serviceChargeStr}\n")
             }
 
             if (bill.discountAmount > 0) {
                 val roundOffStr = CurrencyUtils.formatPriceNoSymbol(-bill.discountAmount.toDouble())
-                sb.append("${" ".repeat(0)}Round off${" ".repeat(10)}${roundOffStr}\n")
+                sb.append("[C]${" ".repeat(0)}Round off${" ".repeat(10)}${roundOffStr}\n")
             }
 
             val grandTotalStr = CurrencyUtils.formatPriceNoSymbol(bill.totalAmount)
             sb.append("\n\u001B@\n")
-            sb.append("${" ".repeat(0)}Grand Total ₹${" ".repeat(10)}${grandTotalStr}\n")
+            sb.append("[C]${" ".repeat(0)}Grand Total ₹${" ".repeat(10)}${grandTotalStr}\n")
             sb.append("[C]Thank You,\n")
             sb.append("[C]Visit Again!\n")
 
