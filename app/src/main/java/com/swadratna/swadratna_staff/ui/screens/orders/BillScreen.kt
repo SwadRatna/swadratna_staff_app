@@ -258,8 +258,10 @@ fun PayBillScreen(
                             contentDescription = "Regenerate Bill"
                         )
                     }
-                    IconButton(onClick = { performPrint() }, enabled = billDetail != null) {
-                        Text("🖨️", fontSize = 20.sp)
+                    if (role == StaffRole.MANAGER.roleName) {
+                        IconButton(onClick = { performPrint() }, enabled = billDetail != null) {
+                            Text("🖨️", fontSize = 20.sp)
+                        }
                     }
                     IconButton(onClick = { shareBill(null) }, enabled = billDetail != null) {
                         Icon(
