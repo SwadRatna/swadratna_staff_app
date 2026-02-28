@@ -79,6 +79,18 @@ fun OrderMenuScreen(
     val currentOrderItems by viewModel.currentOrderItems.collectAsState()
     val orderConfirmationState by viewModel.orderConfirmationState.collectAsState()
     val isOnline by viewModel.isOnline.collectAsState()
+    val tableListState by viewModel.tableListState.collectAsState()
+
+    val tableStringId = remember(tableListState, tableNumber) {
+        if (tableNumber == 0) {
+            "Parcel"
+        } else if (tableListState is TableListState.Success) {
+            val tables = (tableListState as TableListState.Success).tables.tables
+            tables.find { it.id == tableNumber }?.table_id ?: tableNumber.toString()
+        } else {
+            tableNumber.toString()
+        }
+    }
 
     var selectedCategoryId by remember { mutableStateOf<Int?>(null) }
     var searchQuery by remember { mutableStateOf("") }
@@ -205,7 +217,7 @@ fun OrderMenuScreen(
         if (showOrderConfirmationDialog) {
             OrderConfirmationDialog(
                 orderId = orderId,
-                tableNumber = tableNumber,
+                tableStringId = tableStringId,
                 currentOrderItems = currentOrderItems,
                 allMenuItems = allMenuItems,
                 totalPrice = orderTotalPrice,
@@ -844,7 +856,7 @@ fun OrderSummaryCard(
 @Composable
 fun OrderConfirmationDialog(
     orderId: String,
-    tableNumber: Int,
+    tableStringId: String,
     currentOrderItems: Map<Int, Int>,
     allMenuItems: Map<Int, MenuItem>,
     totalPrice: Double,
@@ -868,7 +880,7 @@ fun OrderConfirmationDialog(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Text(
-                    "Confirm Order for Table $tableNumber",
+                    if (tableStringId == "Parcel") "Confirm Parcel Order" else "Confirm Order for Table $tableStringId",
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -934,7 +946,7 @@ fun OrderConfirmationDialog(
                             val kotText = BillPrinterUtil.generateKOT(
                                 kotItems = kotSnapshot,
                                 headerLeft = "Token: $orderId",
-                                tableLabel = "Table $tableNumber"
+                                tableLabel = if (tableStringId == "Parcel") "Parcel" else "Table $tableStringId"
                             )
                             BillPrinterUtil.printWithChooser(
                                 context,

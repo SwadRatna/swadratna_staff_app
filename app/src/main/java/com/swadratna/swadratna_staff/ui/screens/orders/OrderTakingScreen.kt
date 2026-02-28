@@ -90,6 +90,18 @@ fun OrderTakingScreen(
     var showFreeTableDialog by remember { mutableStateOf(false) }
     val freeTableState by viewModel.freeTableState.collectAsState()
     val cancelOrderState by viewModel.cancelOrderState.collectAsState()
+    val tableListState by viewModel.tableListState.collectAsState()
+
+    val tableStringId = remember(tableListState, tableNumber) {
+        if (tableNumber == 0) {
+            "Parcel"
+        } else if (tableListState is TableListState.Success) {
+            val tables = (tableListState as TableListState.Success).tables.tables
+            tables.find { it.id == tableNumber }?.table_id ?: tableNumber.toString()
+        } else {
+            tableNumber.toString()
+        }
+    }
 
     // Validate tab selection based on available tabs
     LaunchedEffect(showMenuTab, showOrdersTab) {
@@ -147,7 +159,7 @@ fun OrderTakingScreen(
                 title = {
                     Column {
                         Text(
-                            "Table $tableNumber",
+                            if (tableNumber == 0) "Parcel" else "Table $tableStringId",
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -248,7 +260,7 @@ fun OrderTakingScreen(
             text = {
                 Text(
                     if (isParcel) "Are you sure you want to cancel this parcel order?"
-                    else "Are you sure you want to free table $tableNumber? This action will cancel the current order."
+                    else "Are you sure you want to free table $tableStringId? This action will cancel the current order."
                 )
             },
             confirmButton = {
